@@ -1,0 +1,104 @@
+16C(d,p)17C transfer at Elab(d)=23.55 MeV; L=3 (1f5/2) template for 7 resonances; ADWA OMP, weakly-bound (be=0.5 MeV)
+NAMELIST
+ &FRESCO  hcm= 0.05 rmatch= 60.0 rintp= 0.5
+     hnl= 0.1 rnl= 3.0 centre= 0.0 cutl=-1.6
+     jtmin= 0.0 jtmax= 40.0 absend= -1.0
+     thmin= 1.0 thmax=180.0 thinc= 2.0
+     ips= 0.05 it0=0 iter=1 iblock=0
+     chans=1 listcc=0 treneg=3 cdetr=0 smats=2 xstabl=0 veff=1
+     elab(1)= 23.550 /
+
+ &PARTITION namep='DEUTERON' massp= 2.01410 zp= 1 nex= 1 pwf=T
+            namet='C-16    ' masst=16.01470 zt= 6 qval=-1.498/
+ &STATES jp= 1.0 ptyp= 1 ep= 0.0000 cpot= 2 jt= 0.0 ptyt= 1 et= 0.0000/
+
+ &PARTITION namep='PROTON  ' massp= 1.00728 zp= 1 nex= 7 pwf=T
+            namet='C-17    ' masst=17.02258 zt= 6 qval= 0.0000/
+ &STATES jp= 0.5 ptyp= 1 ep= 0.0000 cpot= 1 jt= 2.5 ptyt=-1 et= 2.7630/  ! 2.763 MeV  L=3 1f5/2
+ &STATES copyp= 1                          jt= 2.5 ptyt=-1 et= 2.9800/  ! 2.980 MeV  L=3 1f5/2
+ &STATES copyp= 1                          jt= 2.5 ptyt=-1 et= 3.6610/  ! 3.661_NEW MeV  L=3 1f5/2
+ &STATES copyp= 1                          jt= 2.5 ptyt=-1 et= 4.2310/  ! 4.231 MeV  L=3 1f5/2
+ &STATES copyp= 1                          jt= 2.5 ptyt=-1 et= 4.8410/  ! 4.841 MeV  L=3 1f5/2
+ &STATES copyp= 1                          jt= 2.5 ptyt=-1 et= 5.9100/  ! 5.91 MeV  L=3 1f5/2
+ &STATES copyp= 1                          jt= 2.5 ptyt=-1 et= 6.3000/  ! 6.30 MeV  L=3 1f5/2
+ &partition /
+
+! kp=1: p+17C optical model -- Koning-Delaroche, Ep=21 MeV, A=17, Z=6
+ &pot kp= 1 type= 0 p(1:3)= 17.000   0.000   1.4190 /
+ &pot kp= 1 type= 1 p(1:7)= 42.361   1.1462  0.6753  1.689   1.1462  0.6753  0.000 /
+ &pot kp= 1 type= 2 p(1:7)=  0.000   0.000   0.000   5.144   1.3016  0.5275  0.000 /
+ &pot kp= 1 type= 3 p(1:3)=  5.305   0.9338  0.5900 /
+
+! kp=2: d+16C Johnson-Soper ADWA from KD p+n at E_d/2 = 11.78 MeV
+ &pot kp= 2 type= 0 p(1:3)= 16.000   0.000   1.4357 /
+ &pot kp= 2 type= 1 p(1:7)= 102.108  1.1430  0.6754   2.030  1.1430  0.6754  0.000 /
+ &pot kp= 2 type= 2 p(1:7)=  0.000   0.000   0.000   15.540  1.3025  0.5345  0.000 /
+
+! kp=3: bound-state Woods-Saxon for n+16C
+ &pot kp= 3 type= 0 p(1:3)= 16.000   0.000   1.250 /
+ &pot kp= 3 type= 1 p(1:3)= 50.000   1.250   0.650 /
+ &pot kp= 3 type= 3 p(1:3)=  6.000   1.250   0.650 /
+
+! kp=4: deuteron internal Reid-Soft-Core potential
+ &pot kp= 4 type= 0 p(1:3)=  1.000   0.000   1.250 /
+ &pot kp= 4 type= 1 itt=F shape= 5 p(1:3)=  1.000   0.000   1.000 /
+ &pot kp= 4 type= 3 itt=F shape= 5 p(1:3)=  1.000   0.000   1.000 /
+ &pot kp= 4 type= 4 itt=F shape= 5 p(1:3)=  1.000   0.000   1.000 /
+ &pot kp=-4 type= 7 itt=F shape= 5 p(1:3)=  1.000   0.000   1.000 /
+ &pot /
+
+ &OVERLAP kn1= 1 kn2= 2 ic1= 1 ic2= 2 in=-1 kind= 3 ch1=' ' nn= 1 l= 0 lmax= 2 sn= 0.5 ia= 0 j= 0.5 ib= 0
+    kbpot= 4 krpot= 0 be= 2.2260 isc= 0 ipc= 3 nfl= 0 nam= 0 ampl= 0.0000 /
+
+! kn=3: 17C(2.763 2.763) = 16C(0+) + n[1f5/2], L=3 j=2.5, weakly-bound be=0.5
+ &OVERLAP kn1= 3 kn2= 0 ic1= 1 ic2= 2 in= 2 kind= 0 nn= 1 l= 3 sn= 0.5 j= 2.5
+    kbpot= 3 krpot= 0 be= 0.5000 isc= 1 ipc= 1 nfl= 0 nam= 0 ampl= 0.0000 /
+
+! kn=4: 17C(2.980 2.980) = 16C(0+) + n[1f5/2], L=3 j=2.5, weakly-bound be=0.5
+ &OVERLAP kn1= 4 kn2= 0 ic1= 1 ic2= 2 in= 2 kind= 0 nn= 1 l= 3 sn= 0.5 j= 2.5
+    kbpot= 3 krpot= 0 be= 0.5000 isc= 1 ipc= 1 nfl= 0 nam= 0 ampl= 0.0000 /
+
+! kn=5: 17C(3.661 3.661_NEW) = 16C(0+) + n[1f5/2], L=3 j=2.5, weakly-bound be=0.5
+ &OVERLAP kn1= 5 kn2= 0 ic1= 1 ic2= 2 in= 2 kind= 0 nn= 1 l= 3 sn= 0.5 j= 2.5
+    kbpot= 3 krpot= 0 be= 0.5000 isc= 1 ipc= 1 nfl= 0 nam= 0 ampl= 0.0000 /
+
+! kn=6: 17C(4.231 4.231) = 16C(0+) + n[1f5/2], L=3 j=2.5, weakly-bound be=0.5
+ &OVERLAP kn1= 6 kn2= 0 ic1= 1 ic2= 2 in= 2 kind= 0 nn= 1 l= 3 sn= 0.5 j= 2.5
+    kbpot= 3 krpot= 0 be= 0.5000 isc= 1 ipc= 1 nfl= 0 nam= 0 ampl= 0.0000 /
+
+! kn=7: 17C(4.841 4.841) = 16C(0+) + n[1f5/2], L=3 j=2.5, weakly-bound be=0.5
+ &OVERLAP kn1= 7 kn2= 0 ic1= 1 ic2= 2 in= 2 kind= 0 nn= 1 l= 3 sn= 0.5 j= 2.5
+    kbpot= 3 krpot= 0 be= 0.5000 isc= 1 ipc= 1 nfl= 0 nam= 0 ampl= 0.0000 /
+
+! kn=8: 17C(5.910 5.91) = 16C(0+) + n[1f5/2], L=3 j=2.5, weakly-bound be=0.5
+ &OVERLAP kn1= 8 kn2= 0 ic1= 1 ic2= 2 in= 2 kind= 0 nn= 1 l= 3 sn= 0.5 j= 2.5
+    kbpot= 3 krpot= 0 be= 0.5000 isc= 1 ipc= 1 nfl= 0 nam= 0 ampl= 0.0000 /
+
+! kn=9: 17C(6.300 6.30) = 16C(0+) + n[1f5/2], L=3 j=2.5, weakly-bound be=0.5
+ &OVERLAP kn1= 9 kn2= 0 ic1= 1 ic2= 2 in= 2 kind= 0 nn= 1 l= 3 sn= 0.5 j= 2.5
+    kbpot= 3 krpot= 0 be= 0.5000 isc= 1 ipc= 1 nfl= 0 nam= 0 ampl= 0.0000 /
+
+ &overlap /
+
+ &COUPLING icto= 2 icfrom= 1 kind= 7 ip1= 0 ip2= 0 ip3= 0 /
+   &cfp in= 1 ib= 1 ia= 1 kn= 1 a= 1.000 /
+   &cfp in=-2 ib= 1 ia= 1 kn= 3 a= 1.000 /
+ &COUPLING icto= 2 icfrom= 1 kind= 7 ip1= 0 ip2= 0 ip3= 0 /
+   &cfp in= 1 ib= 1 ia= 1 kn= 1 a= 1.000 /
+   &cfp in=-2 ib= 2 ia= 1 kn= 4 a= 1.000 /
+ &COUPLING icto= 2 icfrom= 1 kind= 7 ip1= 0 ip2= 0 ip3= 0 /
+   &cfp in= 1 ib= 1 ia= 1 kn= 1 a= 1.000 /
+   &cfp in=-2 ib= 3 ia= 1 kn= 5 a= 1.000 /
+ &COUPLING icto= 2 icfrom= 1 kind= 7 ip1= 0 ip2= 0 ip3= 0 /
+   &cfp in= 1 ib= 1 ia= 1 kn= 1 a= 1.000 /
+   &cfp in=-2 ib= 4 ia= 1 kn= 6 a= 1.000 /
+ &COUPLING icto= 2 icfrom= 1 kind= 7 ip1= 0 ip2= 0 ip3= 0 /
+   &cfp in= 1 ib= 1 ia= 1 kn= 1 a= 1.000 /
+   &cfp in=-2 ib= 5 ia= 1 kn= 7 a= 1.000 /
+ &COUPLING icto= 2 icfrom= 1 kind= 7 ip1= 0 ip2= 0 ip3= 0 /
+   &cfp in= 1 ib= 1 ia= 1 kn= 1 a= 1.000 /
+   &cfp in=-2 ib= 6 ia= 1 kn= 8 a= 1.000 /
+ &COUPLING icto= 2 icfrom= 1 kind= 7 ip1= 0 ip2= 0 ip3= 0 /
+   &cfp in= 1 ib= 1 ia= 1 kn= 1 a= 1.000 /
+   &cfp in=-2 ib= 7 ia= 1 kn= 9 a= 1.000 /
+ &COUPLING /
