@@ -542,6 +542,13 @@ void C16_pd_AngBins() {
     // angular-distribution fits should not see.
     constexpr double kEffFloor = 0.15;
 
+    // epsilon-gradient cut: drop a bin if the efficiency varies by more than
+    // this factor across the bin width.  The 5.9/6 MeV tables have a steep
+    // kinematic-threshold rise near 13-15 deg where eps swings x4 across a
+    // single 2.5-deg bin -- a bin-center eps is then meaningless and the
+    // corrected point is set by the interpolation, not the data.
+    constexpr double kEffGradMax = 2.0;
+
     // Load the Ex-dependent efficiency tables.  Detection efficiency in the
     // AT-TPC depends on the proton energy (hence the 17C excitation energy),
     // not just theta -- a state at Ex = 6 MeV has a very different track
@@ -628,7 +635,7 @@ void C16_pd_AngBins() {
         return binPars[b][9 + 4*(idx - 3) + 1];
     };
 
-    int nDropped = 0;
+    int nDropFloor = 0, nDropGrad = 0;
     for (size_t b = 0; b < kBins.size(); ++b) {
         const double thetaC = kBins[b].center();
         const double th_lo  = kBins[b].lo  * TMath::DegToRad();
@@ -639,16 +646,32 @@ void C16_pd_AngBins() {
             const double dY = yieldsErr[b][s];
             // Per-state efficiency: the 3 bound states (s < 3) sit at
             // Ex < 0.4 MeV and use the Ex=0 table; the 7 unbound resonances
-            // are interpolated in (Ex, theta) at their fitted Ex.
-            double effVal = 1.0, effErr = 0.0;
-            if (s < 3)
-                effAtTheta(effTables.front(), thetaC, effVal, effErr);
-            else
-                effInterp2D(stateEx(s, b), thetaC, effVal, effErr);
+            // are interpolated in (Ex, theta) at their fitted Ex.  Evaluate
+            // at the bin center and at both edges (for the gradient cut).
+            double effVal = 1.0, effErr = 0.0, effLo = 1.0, effHi = 1.0, dum = 0.0;
+            if (s < 3) {
+                effAtTheta(effTables.front(), thetaC,       effVal, effErr);
+                effAtTheta(effTables.front(), kBins[b].lo,  effLo,  dum);
+                effAtTheta(effTables.front(), kBins[b].hi,  effHi,  dum);
+            } else {
+                const double Ex = stateEx(s, b);
+                effInterp2D(Ex, thetaC,      effVal, effErr);
+                effInterp2D(Ex, kBins[b].lo, effLo,  dum);
+                effInterp2D(Ex, kBins[b].hi, effHi,  dum);
+            }
             // epsilon-floor cut: skip bins where the efficiency correction
             // is too large to be trustworthy.
             if (effVal < kEffFloor) {
-                ++nDropped;
+                ++nDropFloor;
+                continue;
+            }
+            // epsilon-gradient cut: skip bins where the efficiency varies
+            // too steeply across the bin width for a bin-center value to
+            // be meaningful.
+            const double eMin = std::min(effLo, effHi);
+            const double eMax = std::max(effLo, effHi);
+            if (eMin < 1e-6 || eMax / eMin > kEffGradMax) {
+                ++nDropGrad;
                 continue;
             }
             const double sigma_raw = (Y / (kNbeam * kNtarget)) / dOmega * kMbConv;
@@ -664,8 +687,9 @@ void C16_pd_AngBins() {
         }
     }
     dsdo.close();
-    std::cout << "wrote dsdo.csv (dropped " << nDropped
-              << " bins below eff floor " << kEffFloor << ")\n";
+    std::cout << "wrote dsdo.csv (dropped " << nDropFloor
+              << " bins below eff floor " << kEffFloor << ", "
+              << nDropGrad << " bins above eff gradient " << kEffGradMax << ")\n";
 
     // ---------------- plots ----------------
     // Draws data + total fit + each individual component (3 Gaussians, 7 BWs,
