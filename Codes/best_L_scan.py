@@ -39,6 +39,8 @@ state_titles = [
 L_labels = ["L=0 (3s1/2)", "L=1 (2p1/2)", "L=2 (2d3/2)", "L=3 (1f5/2)"]
 L_colors = ["C0", "C1", "C2", "C3"]
 KMAX = 30.0      # fit only forward bins -- avoid kinematic-edge floor
+TIE_THRESH = 0.3  # if the runner-up L is within this in reduced chi2, the
+                  # L assignment is a tie (shapes statistically indistinct)
 
 df = pd.read_csv(os.path.join(HERE, "..", "results", "dsdo.csv"))
 
@@ -97,16 +99,29 @@ for i, (key, title) in enumerate(zip(state_keys, state_titles)):
                     color=L_colors[L], lw=1.6,
                     label=f"{L_labels[L]}: C²S={a:.3g}, χ²/ν={c2v:.2f}")
 
-    # Best L = smallest chi2 with positive amp
-    valid = [f for f in fits if np.isfinite(f[3]) and f[1] > 0]
+    # Best L = smallest chi2 with positive amp.  Flag a tie when the
+    # runner-up is within TIE_THRESH in reduced chi2: the L shapes are
+    # then statistically indistinguishable for this state, so a single
+    # "best L" would be misleading (see eff_artifact_check.py).
+    valid = sorted([f for f in fits if np.isfinite(f[3]) and f[1] > 0],
+                   key=lambda x: x[3])
     if valid:
-        bestL, bestA, bestDA, bestC2, bestNDF = min(valid, key=lambda x: x[3])
+        bestL = valid[0][0]
+        tie = len(valid) > 1 and (valid[1][3] - valid[0][3]) < TIE_THRESH
+        tieL = valid[1][0] if tie else -1
     else:
-        bestL = -1
-    results.append((title, fits, bestL))
+        bestL, tie, tieL = -1, False, -1
+    results.append((title, fits, bestL, tie, tieL))
+
+    if bestL < 0:
+        Llabel = "none"
+    elif tie:
+        Llabel = f"L={bestL}/{tieL} (tie)"
+    else:
+        Llabel = f"L={bestL}"
 
     ax.set_yscale("log"); ax.set_xlim(8, 42); ax.set_ylim(1e-3, 5e2)
-    ax.set_title(f"{title}   best L={bestL}", fontsize=10)
+    ax.set_title(f"{title}   {Llabel}", fontsize=10)
     ax.grid(True, which="both", alpha=0.3)
     ax.legend(fontsize=7.0, loc="upper right")
     if i // 4 == 1: ax.set_xlabel(r"$\theta_\mathrm{CM}$ (deg)")
@@ -115,21 +130,25 @@ for i, (key, title) in enumerate(zip(state_keys, state_titles)):
     row = f"{key:<22s} | "
     for L, a, da, c2v, ndf in fits:
         cell = f"{c2v:6.2f}" if np.isfinite(c2v) else "  nan"
-        marker = " *" if L == bestL else "  "
+        marker = " *" if L == bestL else (" ~" if L == tieL else "  ")
         row += f"{a:7.3g} {cell}{marker}| "
-    row += f" L={bestL}"
+    row += f" {Llabel}"
     print(row)
 
 axes[1, 3].axis("off")
 axes[1, 3].text(0.0, 0.95, "Best-L summary", fontsize=13, weight="bold", transform=axes[1, 3].transAxes)
-txt = "state             best L    C²S_eff       χ²/ν\n"
+txt = "state           L assignment      χ²/ν\n"
 txt += "-" * 56 + "\n"
-for (title, fits, bestL) in results:
-    if bestL >= 0:
-        b = fits[bestL]
-        txt += f"{title:<14s}  L={bestL}   {b[1]:8.4f}±{b[2]:.4f}   {b[3]:5.2f}\n"
-    else:
+for (title, fits, bestL, tie, tieL) in results:
+    if bestL < 0:
         txt += f"{title:<14s}  none\n"
+        continue
+    b = fits[bestL]
+    if tie:
+        t = fits[tieL]
+        txt += f"{title:<14s}  L={bestL}/{tieL} (tie)   {b[3]:.2f} / {t[3]:.2f}\n"
+    else:
+        txt += f"{title:<14s}  L={bestL}            {b[3]:.2f}\n"
 axes[1, 3].text(0.0, 0.05, txt, fontsize=9.5, family="monospace",
                 transform=axes[1, 3].transAxes, va="bottom")
 
