@@ -537,6 +537,11 @@ void C16_pd_AngBins() {
     constexpr double kNtarget = 0.019632068643898506;
     constexpr double kMbConv  = 10.0;       // unit conversion to mb
 
+    // epsilon-floor: drop (state, theta) bins whose efficiency is below this.
+    // A few counts divided by eps < 0.15 is a >6.7x blow-up the FRESCO
+    // angular-distribution fits should not see.
+    constexpr double kEffFloor = 0.15;
+
     // Load the Ex-dependent efficiency tables.  Detection efficiency in the
     // AT-TPC depends on the proton energy (hence the 17C excitation energy),
     // not just theta -- a state at Ex = 6 MeV has a very different track
@@ -623,6 +628,7 @@ void C16_pd_AngBins() {
         return binPars[b][9 + 4*(idx - 3) + 1];
     };
 
+    int nDropped = 0;
     for (size_t b = 0; b < kBins.size(); ++b) {
         const double thetaC = kBins[b].center();
         const double th_lo  = kBins[b].lo  * TMath::DegToRad();
@@ -639,6 +645,12 @@ void C16_pd_AngBins() {
                 effAtTheta(effTables.front(), thetaC, effVal, effErr);
             else
                 effInterp2D(stateEx(s, b), thetaC, effVal, effErr);
+            // epsilon-floor cut: skip bins where the efficiency correction
+            // is too large to be trustworthy.
+            if (effVal < kEffFloor) {
+                ++nDropped;
+                continue;
+            }
             const double sigma_raw = (Y / (kNbeam * kNtarget)) / dOmega * kMbConv;
             const double dSigma_stat = (Y > 0)
                 ? sigma_raw * std::sqrt(1.0/Y + std::pow(dY/Y, 2)) : 0.0;
@@ -652,7 +664,8 @@ void C16_pd_AngBins() {
         }
     }
     dsdo.close();
-    std::cout << "wrote dsdo.csv\n";
+    std::cout << "wrote dsdo.csv (dropped " << nDropped
+              << " bins below eff floor " << kEffFloor << ")\n";
 
     // ---------------- plots ----------------
     // Draws data + total fit + each individual component (3 Gaussians, 7 BWs,
