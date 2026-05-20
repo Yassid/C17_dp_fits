@@ -537,32 +537,78 @@ void C16_pd_AngBins() {
     constexpr double kNtarget = 0.019632068643898506;
     constexpr double kMbConv  = 10.0;       // unit conversion to mb
 
-    // Load efficiency table -- table entries are at 5-deg-spaced centers
-    // (2.5, 7.5, 12.5, ...).  Linearly interpolate for the 2.5-deg bin centers.
-    std::vector<double> effAng, effValVec, effErrVec;
-    std::ifstream eff("/home/yassid/fair_install/16C_dp/RCS/efficiency_16Cdp_0m.txt");
+    // Load the Ex-dependent efficiency tables.  Detection efficiency in the
+    // AT-TPC depends on the proton energy (hence the 17C excitation energy),
+    // not just theta -- a state at Ex = 6 MeV has a very different track
+    // length / acceptance than the ground state.  Eight tables were simulated
+    // at Ex = 0, 2, 3, 4, 4.8, 5, 5.9, 6 MeV.  Each is 5-deg-spaced in theta
+    // (centers 2.5, 7.5, 12.5, ...); the unbound resonances are interpolated
+    // bilinearly in (Ex, theta), the bound states use the Ex=0 table.
+    struct EffTable {
+        double Ex;                                  // MeV
+        std::vector<double> ang, val, err;
+    };
+    std::vector<EffTable> effTables;
     {
-        std::string line;
-        while (std::getline(eff, line)) {
-            if (line.empty() || line[0] == '#') continue;
-            std::istringstream iss(line);
-            double a, e, de;
-            if (iss >> a >> e >> de) {
-                effAng.push_back(a);
-                effValVec.push_back(e);
-                effErrVec.push_back(de);
+        const std::string effDir = "/home/yassid/C16_dp/C16_dp/efficiency/";
+        const std::string rcsDir = "/home/yassid/fair_install/16C_dp/RCS/";
+        std::vector<std::pair<double, std::string>> srcs = {
+            {0.0, rcsDir + "efficiency_16Cdp_0m.txt"},   // 0m lives in RCS/
+            {2.0, effDir + "efficiency_16Cdp_2m.txt"},
+            {3.0, effDir + "efficiency_16Cdp_3m.txt"},
+            {4.0, effDir + "efficiency_16Cdp_4m.txt"},
+            {4.8, effDir + "efficiency_16Cdp_4.8m.txt"},
+            {5.0, effDir + "efficiency_16Cdp_5m.txt"},
+            {5.9, effDir + "efficiency_16Cdp_5.9m.txt"},
+            {6.0, effDir + "efficiency_16Cdp_6m.txt"},
+        };
+        for (auto& src : srcs) {
+            EffTable t;
+            t.Ex = src.first;
+            std::ifstream f(src.second);
+            if (!f) { std::cerr << "WARNING: missing eff table " << src.second << "\n"; continue; }
+            std::string line;
+            while (std::getline(f, line)) {
+                if (line.empty() || line[0] == '#') continue;
+                std::istringstream iss(line);
+                double a, e, de;
+                if (iss >> a >> e >> de) {
+                    if (!std::isfinite(de)) de = 0.0;   // 4.8m has a nan err at 2.5 deg
+                    t.ang.push_back(a); t.val.push_back(e); t.err.push_back(de);
+                }
             }
+            effTables.push_back(std::move(t));
         }
+        std::sort(effTables.begin(), effTables.end(),
+                  [](const EffTable& a, const EffTable& b) { return a.Ex < b.Ex; });
+        std::cout << "loaded " << effTables.size() << " efficiency tables\n";
     }
-    auto effInterp = [&](double theta, double& val, double& err) {
-        if (effAng.empty()) { val = 1.0; err = 0.0; return; }
-        if (theta <= effAng.front()) { val = effValVec.front(); err = effErrVec.front(); return; }
-        if (theta >= effAng.back())  { val = effValVec.back();  err = effErrVec.back();  return; }
-        auto it = std::lower_bound(effAng.begin(), effAng.end(), theta);
-        size_t i = std::distance(effAng.begin(), it);
-        double t = (theta - effAng[i-1]) / (effAng[i] - effAng[i-1]);
-        val = (1.0 - t) * effValVec[i-1] + t * effValVec[i];
-        err = (1.0 - t) * effErrVec[i-1] + t * effErrVec[i];
+
+    // Linear theta interpolation within one table.
+    auto effAtTheta = [](const EffTable& t, double theta, double& val, double& err) {
+        if (t.ang.empty()) { val = 1.0; err = 0.0; return; }
+        if (theta <= t.ang.front()) { val = t.val.front(); err = t.err.front(); return; }
+        if (theta >= t.ang.back())  { val = t.val.back();  err = t.err.back();  return; }
+        auto it = std::lower_bound(t.ang.begin(), t.ang.end(), theta);
+        size_t i = std::distance(t.ang.begin(), it);
+        double f = (theta - t.ang[i-1]) / (t.ang[i] - t.ang[i-1]);
+        val = (1.0 - f) * t.val[i-1] + f * t.val[i];
+        err = (1.0 - f) * t.err[i-1] + f * t.err[i];
+    };
+
+    // Bilinear (Ex, theta) interpolation; clamps to the table Ex range.
+    auto effInterp2D = [&](double Ex, double theta, double& val, double& err) {
+        if (effTables.empty()) { val = 1.0; err = 0.0; return; }
+        if (Ex <= effTables.front().Ex) { effAtTheta(effTables.front(), theta, val, err); return; }
+        if (Ex >= effTables.back().Ex)  { effAtTheta(effTables.back(),  theta, val, err); return; }
+        size_t k = 0;
+        while (k + 1 < effTables.size() && effTables[k+1].Ex <= Ex) ++k;
+        double vLo, eLo, vHi, eHi;
+        effAtTheta(effTables[k],   theta, vLo, eLo);
+        effAtTheta(effTables[k+1], theta, vHi, eHi);
+        double g = (Ex - effTables[k].Ex) / (effTables[k+1].Ex - effTables[k].Ex);
+        val = (1.0 - g) * vLo + g * vHi;
+        err = std::sqrt(std::pow((1.0 - g) * eLo, 2) + std::pow(g * eHi, 2));
     };
 
     std::ofstream dsdo("../results/dsdo.csv");
@@ -582,11 +628,17 @@ void C16_pd_AngBins() {
         const double th_lo  = kBins[b].lo  * TMath::DegToRad();
         const double th_hi  = kBins[b].hi  * TMath::DegToRad();
         const double dOmega = (std::cos(th_lo) - std::cos(th_hi)) * 2.0 * TMath::Pi();
-        double effVal = 1.0, effErr = 0.0;
-        effInterp(thetaC, effVal, effErr);
         for (int s = 0; s < 10; ++s) {
             const double Y  = yields[b][s];
             const double dY = yieldsErr[b][s];
+            // Per-state efficiency: the 3 bound states (s < 3) sit at
+            // Ex < 0.4 MeV and use the Ex=0 table; the 7 unbound resonances
+            // are interpolated in (Ex, theta) at their fitted Ex.
+            double effVal = 1.0, effErr = 0.0;
+            if (s < 3)
+                effAtTheta(effTables.front(), thetaC, effVal, effErr);
+            else
+                effInterp2D(stateEx(s, b), thetaC, effVal, effErr);
             const double sigma_raw = (Y / (kNbeam * kNtarget)) / dOmega * kMbConv;
             const double dSigma_stat = (Y > 0)
                 ? sigma_raw * std::sqrt(1.0/Y + std::pow(dY/Y, 2)) : 0.0;
