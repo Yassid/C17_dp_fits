@@ -17,6 +17,10 @@ from scipy.interpolate import interp1d
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FRESCO = os.path.join(HERE, "..", "fresco", "outputs")
+BINNING = os.environ.get("BINNING", "fine")
+RESULTS_DIR = os.path.join(HERE, "..", "results", BINNING)
+PLOTS_DIR = os.path.join(HERE, "..", "plots", BINNING)
+os.makedirs(PLOTS_DIR, exist_ok=True)
 
 state_keys = [
     "ex2.763_1half-",   # 0
@@ -42,7 +46,7 @@ KMAX = 30.0      # fit only forward bins -- avoid kinematic-edge floor
 TIE_THRESH = 0.3  # if the runner-up L is within this in reduced chi2, the
                   # L assignment is a tie (shapes statistically indistinct)
 
-df = pd.read_csv(os.path.join(HERE, "..", "results", "dsdo.csv"))
+df = pd.read_csv(os.path.join(RESULTS_DIR, "dsdo.csv"))
 
 # Load all (L, state) FRESCO curves
 curves = {}
@@ -155,6 +159,6 @@ axes[1, 3].text(0.0, 0.05, txt, fontsize=9.5, family="monospace",
 fig.suptitle("16C(d,p)17C — L-scan per unbound state (FRESCO ADWA weakly-bound, be=0.5 MeV)",
              fontsize=12)
 fig.tight_layout()
-out = os.path.join(HERE, "..", "plots", "plots_L_scan.png")
+out = os.path.join(PLOTS_DIR, "plots_L_scan.png")
 fig.savefig(out, dpi=130, bbox_inches="tight")
 print(f"\nsaved: {out}")

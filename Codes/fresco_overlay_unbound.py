@@ -23,6 +23,10 @@ from scipy.interpolate import interp1d
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FRESCO = os.path.join(HERE, "..", "fresco", "outputs")
+BINNING = os.environ.get("BINNING", "fine")
+RESULTS_DIR = os.path.join(HERE, "..", "results", BINNING)
+PLOTS_DIR = os.path.join(HERE, "..", "plots", BINNING)
+os.makedirs(PLOTS_DIR, exist_ok=True)
 
 state_names = [
     "ex2.763_1half-",
@@ -43,7 +47,7 @@ state_titles = [
     r"6.30 5/2$^+$  (2d5/2, L=2)",
 ]
 
-df = pd.read_csv(os.path.join(HERE, "..", "results", "dsdo.csv"))
+df = pd.read_csv(os.path.join(RESULTS_DIR, "dsdo.csv"))
 
 # Load FRESCO curves
 curves = []
@@ -122,6 +126,6 @@ ax.grid(True, which="both", alpha=0.3); ax.legend(fontsize=7)
 fig.suptitle("16C(d,p)17C @ 11.77 MeV/u — FRESCO ADWA (weakly-bound approx) vs extracted AD",
              fontsize=12)
 fig.tight_layout()
-out = os.path.join(HERE, "..", "plots", "plots_fresco_unbound.png")
+out = os.path.join(PLOTS_DIR, "plots_fresco_unbound.png")
 fig.savefig(out, dpi=130, bbox_inches="tight")
 print(f"\nsaved: {out}")

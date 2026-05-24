@@ -10,7 +10,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-df = pd.read_csv(os.path.join(HERE, "..", "results", "dsdo.csv"))
+BINNING = os.environ.get("BINNING", "fine")
+RESULTS_DIR = os.path.join(HERE, "..", "results", BINNING)
+PLOTS_DIR = os.path.join(HERE, "..", "plots", BINNING)
+os.makedirs(PLOTS_DIR, exist_ok=True)
+df = pd.read_csv(os.path.join(RESULTS_DIR, "dsdo.csv"))
 
 # Preserve the natural state order (rows in yields.csv keep it).
 state_order = list(df["state"].drop_duplicates())
@@ -49,7 +53,7 @@ for i, state in enumerate(state_order):
 fig.suptitle("16C(d,p)17C — angular distributions extracted from per-θ_CM Ex spectral fits",
              fontsize=13)
 fig.tight_layout()
-out = os.path.join(HERE, "..", "plots", "plots_angular_distros.png")
+out = os.path.join(PLOTS_DIR, "plots_angular_distros.png")
 fig.savefig(out, dpi=130, bbox_inches="tight")
 print(f"saved: {out}")
 

@@ -3,17 +3,18 @@
 // Refactor of C16_pd_ana_penetrability_ang_dist.C with:
 //   * fixed local paths (data in /home/yassid/C16_dp/C16_dp/InterpSolver_root/,
 //     penetrability and phase-space files relative to Codes/)
-//   * 6 theta_CM bins fitted in one run (10-15, 15-20, 20-25, 25-30, 30-35, 35-40 deg)
+//   * theta_CM bin grid selectable at runtime (10-40 deg span; bin width 2.5/5/10 deg)
 //   * inclusive fit pins BW positions, widths and resolution; per-bin fits free
 //     only the amplitudes (Gaussian + BW + PS + linear bg)
 //   * ConvolutedBW replaced by analytic TMath::Voigt (Gamma_eff is constant inside
 //     the convolution by construction, so the integrand is exactly a Voigt)
 //   * yields per state per bin and dsigma/dOmega tables written to CSV
 //
-// Run from /home/yassid/C16dp_fits/Codes/ after
-//   source /home/yassid/fair_install/ATTPCROOTv2-OpenKF/build/config.sh
-// then
-//   root -l -b -q 'C16_pd_AngBins.C+'
+// Run from Codes/ after sourcing the FairRoot env, then
+//   root -l -b -q 'C16_pd_AngBins.C+(0)'   # fine    12 x 2.5 deg
+//   root -l -b -q 'C16_pd_AngBins.C+(1)'   # coarse2  6 x 5   deg
+//   root -l -b -q 'C16_pd_AngBins.C+(2)'   # coarse4  3 x 10  deg
+// Outputs land in ../results/<name>/ and ../plots/<name>/.
 
 #include <algorithm>
 #include <array>
@@ -64,22 +65,41 @@ constexpr double kEbinMax =  7.0;       // fit upper limit (1n threshold is ~0.7
 constexpr int    kNumberBins = 85;      // (kEbinMax - kEbinMin) / 0.1 = 85
 constexpr double kQcorrShift = 0.208;   // physical shift applied after the per-event QcorrZ
 
-// theta_CM bin grid: 12 bins of 2.5 deg from 10 to 40 deg, matching the
-// hex11..hex43 layout of C16_pd_ana_penetrability_ang_dist.C in the github
-// repo (storage binning).  Efficiency is interpolated linearly between the
-// 5-deg table entries.
+// theta_CM bin grid is now selectable at runtime via the `scheme` argument
+// to C16_pd_AngBins().  All three schemes span 10-40 deg; only the bin
+// width changes, so the same inclusive fit is used as a positions/widths
+// reference and only the per-bin amplitudes vary.
+//   scheme 0  fine     12 x 2.5 deg  (default; the github hex11..hex43 grid)
+//   scheme 1  coarse2   6 x 5.0 deg  (matches the PDF presentation)
+//   scheme 2  coarse4   3 x 10  deg  (very coarse)
 struct AngBin { double lo; double hi; double center() const { return 0.5 * (lo + hi); } };
-const std::array<AngBin, 12> kBins = {{
-    {10.0,12.5},{12.5,15.0},{15.0,17.5},{17.5,20.0},
-    {20.0,22.5},{22.5,25.0},{25.0,27.5},{27.5,30.0},
-    {30.0,32.5},{32.5,35.0},{35.0,37.5},{37.5,40.0}
-}};
-
-const std::array<const char*, 12> kBinTag = {
-    "10-12.5","12.5-15","15-17.5","17.5-20",
-    "20-22.5","22.5-25","25-27.5","27.5-30",
-    "30-32.5","32.5-35","35-37.5","37.5-40"
+struct BinScheme {
+    const char* name;
+    std::vector<AngBin>      bins;
+    std::vector<std::string> tags;
 };
+inline BinScheme makeBinScheme(int s) {
+    BinScheme bs;
+    double width = 0;
+    switch (s) {
+        case 0: bs.name = "fine";    width = 2.5;  break;
+        case 1: bs.name = "coarse2"; width = 5.0;  break;
+        case 2: bs.name = "coarse4"; width = 10.0; break;
+        default: throw std::runtime_error("scheme must be 0 (fine), 1 (coarse2) or 2 (coarse4)");
+    }
+    const int n = static_cast<int>(std::round(30.0 / width));
+    for (int i = 0; i < n; ++i) {
+        double lo = 10.0 + width * i;
+        double hi = lo + width;
+        bs.bins.push_back({lo, hi});
+        char buf[32];
+        const bool isInt = (std::fmod(lo, 1.0) == 0.0 && std::fmod(hi, 1.0) == 0.0);
+        if (isInt) snprintf(buf, sizeof(buf), "%d-%d", static_cast<int>(lo), static_cast<int>(hi));
+        else       snprintf(buf, sizeof(buf), "%g-%g", lo, hi);
+        bs.tags.emplace_back(buf);
+    }
+    return bs;
+}
 
 // State labels and L assignments matching SpectralModel.
 const std::array<const char*, 3> kGaussLabel = {
@@ -210,9 +230,22 @@ public:
 
 // ============================== runtime =====================================
 
-void C16_pd_AngBins() {
+void C16_pd_AngBins(int scheme = 0) {
     ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2");
     gStyle->SetOptStat(0);
+
+    const BinScheme schemeDef = makeBinScheme(scheme);
+    const auto& kBins   = schemeDef.bins;
+    const auto& kBinTag = schemeDef.tags;
+    const size_t nBins  = kBins.size();
+    const TString outTag(schemeDef.name);
+    const TString resultsDir = TString("../results/") + outTag;
+    const TString plotsDir   = TString("../plots/")   + outTag;
+    gSystem->mkdir(resultsDir, /*recursive=*/true);
+    gSystem->mkdir(plotsDir,   /*recursive=*/true);
+    std::cout << "binning scheme = " << outTag
+              << " (" << nBins << " bins, "
+              << kBins.front().lo << "-" << kBins.back().hi << " deg)\n";
 
     // ---------------- data loading ----------------
     const TString dataDir = "/home/yassid/C16_dp/C16_dp/InterpSolver_root/";
@@ -238,10 +271,10 @@ void C16_pd_AngBins() {
     // Inclusive (10-40) and per-bin Ex histograms.  We fill Q-corrected Ex.
     auto* hInclusive = new TH1F("hInclusive", "Inclusive 10-40 deg",
                                 kNumberBins, kEbinMin, kEbinMax);
-    std::array<TH1F*, 12> hBin;
-    for (size_t b = 0; b < kBins.size(); ++b) {
+    std::vector<TH1F*> hBin(nBins, nullptr);
+    for (size_t b = 0; b < nBins; ++b) {
         hBin[b] = new TH1F(Form("hBin_%zu", b),
-                           Form("17C Ex spectrum theta_CM %s deg", kBinTag[b]),
+                           Form("17C Ex spectrum theta_CM %s deg", kBinTag[b].c_str()),
                            kNumberBins, kEbinMin, kEbinMax);
     }
     auto* hThetaCM = new TH1F("hThetaCM", "theta_CM all events", 90, 0, 90);
@@ -291,7 +324,7 @@ void C16_pd_AngBins() {
             if (theta_cm >= kBins.front().lo && theta_cm < kBins.back().hi) {
                 hInclusive->Fill(Ex_corr);
                 ++kept_events;
-                for (size_t b = 0; b < kBins.size(); ++b) {
+                for (size_t b = 0; b < nBins; ++b) {
                     if (theta_cm >= kBins[b].lo && theta_cm < kBins[b].hi) {
                         hBin[b]->Fill(Ex_corr);
                         break;
@@ -303,7 +336,7 @@ void C16_pd_AngBins() {
         delete runFile;
     }
     std::cout << "Events: total " << total_events << "  kept in 10-40 deg " << kept_events << "\n";
-    for (size_t b = 0; b < kBins.size(); ++b) {
+    for (size_t b = 0; b < nBins; ++b) {
         std::cout << "  bin " << kBinTag[b] << ": "
                   << static_cast<long>(hBin[b]->GetEntries()) << " events\n";
     }
@@ -339,8 +372,8 @@ void C16_pd_AngBins() {
 
     TH1F* h_PS_1n_incl = buildPS(ps1nFile, kBins.front().lo, kBins.back().hi, "h_PS_1n_incl");
     TH1F* h_PS_2n_incl = buildPS(ps2nFile, kBins.front().lo, kBins.back().hi, "h_PS_2n_incl");
-    std::array<TH1F*, 12> h_PS_1n_bin, h_PS_2n_bin;
-    for (size_t b = 0; b < kBins.size(); ++b) {
+    std::vector<TH1F*> h_PS_1n_bin(nBins, nullptr), h_PS_2n_bin(nBins, nullptr);
+    for (size_t b = 0; b < nBins; ++b) {
         h_PS_1n_bin[b] = buildPS(ps1nFile, kBins[b].lo, kBins[b].hi,
                                  Form("h_PS_1n_bin%zu", b));
         h_PS_2n_bin[b] = buildPS(ps2nFile, kBins[b].lo, kBins[b].hi,
@@ -405,13 +438,13 @@ void C16_pd_AngBins() {
     for (int i = 0; i < 40; ++i) incl[i] = fInclusive->GetParameter(i);
 
     // ---------------- per-bin fits ------------------
-    std::array<TF1*, 12> fBin;
-    std::array<SpectralModel*, 12> mBin;
-    std::vector<std::vector<double>> binPars(kBins.size(), std::vector<double>(40, 0.0));
-    std::vector<double>              binChi2(kBins.size(), 0.0);
-    std::vector<int>                 binNdf(kBins.size(), 0);
+    std::vector<TF1*> fBin(nBins, nullptr);
+    std::vector<SpectralModel*> mBin(nBins, nullptr);
+    std::vector<std::vector<double>> binPars(nBins, std::vector<double>(40, 0.0));
+    std::vector<double>              binChi2(nBins, 0.0);
+    std::vector<int>                 binNdf(nBins, 0);
 
-    for (size_t b = 0; b < kBins.size(); ++b) {
+    for (size_t b = 0; b < nBins; ++b) {
         auto* g1 = histoToTgraph(h_PS_1n_bin[b], Form("g_PS1n_b%zu", b));
         auto* g2 = histoToTgraph(h_PS_2n_bin[b], Form("g_PS2n_b%zu", b));
         mBin[b] = new SpectralModel(g1, g2);
@@ -473,19 +506,19 @@ void C16_pd_AngBins() {
         };
     };
 
-    std::ofstream csv("../results/yields.csv");
+    std::ofstream csv((resultsDir + "/yields.csv").Data());
     csv << "bin_lo,bin_hi,bin_center,state,Ex_MeV,counts,counts_err\n";
 
     const double binWidth = (kEbinMax - kEbinMin) / kNumberBins;
     const double sqrt2pi  = std::sqrt(2.0 * TMath::Pi());
 
     // 2D table per bin per state for downstream conversion
-    std::vector<std::vector<double>> yields(kBins.size(),
+    std::vector<std::vector<double>> yields(nBins,
                                             std::vector<double>(10, 0.0));
-    std::vector<std::vector<double>> yieldsErr(kBins.size(),
+    std::vector<std::vector<double>> yieldsErr(nBins,
                                                std::vector<double>(10, 0.0));
 
-    for (size_t b = 0; b < kBins.size(); ++b) {
+    for (size_t b = 0; b < nBins; ++b) {
         // Gaussians
         for (int g = 0; g < 3; ++g) {
             const double amp  = binPars[b][3*g];
@@ -623,7 +656,7 @@ void C16_pd_AngBins() {
         err = std::sqrt(std::pow((1.0 - g) * eLo, 2) + std::pow(g * eHi, 2));
     };
 
-    std::ofstream dsdo("../results/dsdo.csv");
+    std::ofstream dsdo((resultsDir + "/dsdo.csv").Data());
     dsdo << "bin_lo,bin_hi,bin_center,state,Ex_MeV,dsdo_mbsr,dsdo_err_mbsr,eff,eff_err\n";
 
     auto stateLabel = [](int idx) {
@@ -636,7 +669,7 @@ void C16_pd_AngBins() {
     };
 
     int nDropFloor = 0, nDropGrad = 0;
-    for (size_t b = 0; b < kBins.size(); ++b) {
+    for (size_t b = 0; b < nBins; ++b) {
         const double thetaC = kBins[b].center();
         const double th_lo  = kBins[b].lo  * TMath::DegToRad();
         const double th_hi  = kBins[b].hi  * TMath::DegToRad();
@@ -790,20 +823,25 @@ void C16_pd_AngBins() {
     drawWithComponents(hInclusive, incl, g_PS1n_incl, g_PS2n_incl,
                        "incl", "Inclusive 10-40 deg; Excitation Energy (MeV); Counts",
                        /*drawLegend=*/true);
-    cIncl->SaveAs("../plots/plots_inclusive.png");
+    cIncl->SaveAs((plotsDir + "/plots_inclusive.png").Data());
 
-    auto* cBin = new TCanvas("cBin", "Per-bin fits", 1800, 1300);
-    cBin->Divide(4, 3);
-    for (size_t b = 0; b < kBins.size(); ++b) {
+    // Canvas grid: try to keep things roughly square -- 12 -> 4x3, 6 -> 3x2,
+    // 3 -> 3x1.
+    int nCols = std::min<int>(4, static_cast<int>(nBins));
+    int nRows = static_cast<int>((nBins + nCols - 1) / nCols);
+    int canvW = 450 * nCols, canvH = 450 * nRows;
+    auto* cBin = new TCanvas("cBin", "Per-bin fits", canvW, canvH);
+    cBin->Divide(nCols, nRows);
+    for (size_t b = 0; b < nBins; ++b) {
         cBin->cd(b + 1);
         auto* g1 = histoToTgraph(h_PS_1n_bin[b], Form("g_PS1n_p%zu", b));
         auto* g2 = histoToTgraph(h_PS_2n_bin[b], Form("g_PS2n_p%zu", b));
         drawWithComponents(
             hBin[b], binPars[b], g1, g2, Form("b%zu", b),
-            Form("17C, theta_CM %s deg; Excitation Energy (MeV); Counts", kBinTag[b]),
+            Form("17C, theta_CM %s deg; Excitation Energy (MeV); Counts", kBinTag[b].c_str()),
             /*drawLegend=*/(b == 0));
     }
-    cBin->SaveAs("../plots/plots_bins.png");
+    cBin->SaveAs((plotsDir + "/plots_bins.png").Data());
 
     std::cout << "\nDone.\n";
 }
