@@ -19,3 +19,9 @@ __pycache__/
 # FRESCO logs / fort.* scratch
 *.out
 fort.*
+
+# Regenerable per-variant systematics outputs (reproduce via Codes/run_systematics.py)
+# Keep the aggregate summaries/plots at results/ and plots/ root, and plots/syst_compare/.
+results/fine_*/
+plots/fine_*/
+Codes/syst_logs/

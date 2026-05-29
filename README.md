@@ -70,17 +70,19 @@ PDF [`Presentations/Analysis_16C_dp.pdf`](Presentations/Analysis_16C_dp.pdf)
 ## Headline results
 
 L-scan, fit on θ_CM ≤ 30° (kinematic-edge bins excluded), weakly-bound
-approximation (be = 0.5 MeV in the WS for the n+16C form factor):
+approximation (be = 0.5 MeV in the WS for the n+16C form factor).
+Numbers below use the post-May-20 efficiency baseline (inclusive
+spectral-fit χ²/ν = 1.78, from `results/fine/L_scan.csv`).
 
-| Ex (MeV) | Lit J^π | best L (data) | χ²/ν | comment                                                |
-|----------|---------|---------------|------|--------------------------------------------------------|
-| 2.763    | 1/2−    | L=2 (1.24)    | weak | data too flat to distinguish; L=1 also OK (1.69)       |
-| 2.980    | 3/2+    | L=3 (2.78)    | poor | all L fits poor; data peak at 17.5° not reproduced     |
-| 3.661    | NEW     | **L=3 (0.89)**| best | possible pf-shell intruder (J^π = 5/2− or 7/2−); L=2 close at 1.03 |
-| 4.231    | 3/2+    | L=2 (0.96)    | ✓    | matches PDF                                            |
-| 4.841    | 1/2+    | **L=0 (0.30)**| ✓✓   | decisive 3s1/2 confirmation                            |
-| 5.91     | 3/2+    | L=2 (1.79)    | ✓    | matches PDF                                            |
-| 6.30     | 5/2+    | L=3 vs L=2    | 2.00 vs 2.13 | too close to call                                |
+| Ex (MeV) | Lit J^π | best L (χ²/ν) | next L (χ²/ν)          | comment                                                            |
+|----------|---------|---------------|------------------------|--------------------------------------------------------------------|
+| 2.763    | 1/2−    | L=3 (1.03)    | L=2 (1.04), L=1 (1.11) | three-way near-tie; AD too flat to distinguish                     |
+| 2.980    | 3/2+    | L=3 (1.87)    | L=2 (2.11)             | all L fits poor; 17.5° peak still not reproduced                   |
+| 3.661    | NEW     | **L=2 (1.07)**| L=3 (1.12)             | L=2/L=3 ambiguous; possible sd-pf intruder                         |
+| 4.231    | 3/2+    | **L=2 (0.44)**| L=3 (1.04)             | decisive d-wave; matches PDF                                       |
+| 4.841    | 1/2+    | **L=0 (2.38)**| L=1 (5.58)             | decisive s1/2 (L=1/2/3 all factor ≥2 worse), χ²/ν up from 0.30 pre-fix |
+| 5.91     | 3/2+    | L=2 (2.91)    | L=0 (3.10)             | L=2 marginal; AD shape poorly constrained                          |
+| 6.30     | 5/2+    | L=0 (0.30)    | L=2 (0.36), L=3 (0.36) | L=0 unphysical for 5/2⁺ (s1/2⊗0⁺ = 1/2⁺); L=2 essentially tied     |
 
 The absolute C²S_eff values are **shape-only**: the weakly-bound
 approximation gives the correct L-dependent angular shape but the magnitude
@@ -155,11 +157,22 @@ plots/                  PNG output of all analysis steps
   events and were not used for the PDF presentation).
 - **35–40° bins**: bound-state Gaussian amplitudes hit the fit floor at the
   AT-TPC kinematic edge — drop these bins when comparing bound-state ADs.
-- **2.980 3/2+**: no L template fits the data well; either a bg
-  contamination under the BW or a wrong J^π assignment.
-- **3.661 NEW**: L=3 narrowly preferred over L=2 in shape; with current
-  statistics neither is decisive. Higher-stats or a refined Ex-fit could
-  resolve.
+- **2.980 3/2+**: no L template fits the data well (best χ²/ν = 1.87 at
+  L=3, but expected L=2 only marginally worse at 2.11); the 17.5° peak in
+  the AD is not reproduced. Likely background contamination under the BW
+  or a centroid/width misassignment — the spectral fit also wants E₀
+  ~120 keV above the shell-model value (see [[feedback-shellmodel-priors]]).
+- **3.661 NEW**: L=2 narrowly preferred over L=3 (1.07 vs 1.12) with the
+  new baseline — flipped from pre-efficiency-fix where L=3 led. Neither
+  decisive at current statistics.
+- **4.841 1/2+**: L=0 is still the decisive pick (next L worse by factor
+  ≥2 in χ²/ν), but the absolute χ²/ν climbed from 0.30 to 2.38 after the
+  efficiency correction — worth a residual check in the AD, since the
+  spectral fit also resolves a Γ ~3× the shell-model value here.
+- **5.91 3/2+ / 6.30 5/2+**: kinematic-edge bins drop most of the signal
+  past 30°, so the AD is fit on only ~8 effective points. 6.30 picks
+  L=0 by χ²/ν but that is forbidden by 0⁺⊗s1/2 = 1/2⁺; the L=2 d-wave
+  fit (χ²/ν = 0.36) is essentially tied and physically allowed.
 - **Absolute SFs**: not extracted here. The shape-only weakly-bound
   approximation is sufficient for L assignment, not for spectroscopic-factor
   publication.

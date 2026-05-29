@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <regex>
@@ -109,7 +110,90 @@ const std::array<const char*, 7> kBWLabel = {
     "ex2.763_1half-", "ex2.980_3half+", "ex3.661_NEW",
     "ex4.231_3half+", "ex4.841_1half+", "ex5.91_3half+", "ex6.30_5half+"
 };
-const std::array<int, 7> kBW_L = {1, 2, 2, 2, 2, 2, 2};
+// kBW_L is the penetrability-L used in the BW lineshape per unbound state.
+// Default values come from the literature J^pi (see kBWLabel).  At runtime a
+// systematic variant may override per-state via the BW_L_OVERRIDE env var
+// (see VariantConfig).  Mutable global so SpectralModel can read it.
+std::array<int, 7> kBW_L = {1, 2, 2, 2, 2, 2, 2};
+
+// Spectral-model parameter count.  Layout:
+//   p[0..8]   3 bound Gaussians (Amp, mean, sigma) x 3
+//   p[9..36]  7 BWs (Amp, E0, Gamma0, sigma) x 7
+//   p[37]     1n phase-space amplitude
+//   p[38]     linear-bg constant
+//   p[39]     2n phase-space amplitude
+//   p[40..42] contaminant Gaussian (Amp, mean, sigma) -- locked to 0 unless
+//             the CONTAMINANT_ENABLE variant is active.  Models a localised
+//             excess just above the 1n threshold (~0.7-1.1 MeV) seen in the
+//             inclusive residuals (data_minus_fit ~ 2-4 sigma per bin).
+constexpr int kNPar = 43;
+
+// ---------------- variant (systematics) config --------------------
+// All knobs default to "nominal".  A non-nominal value is picked up from the
+// corresponding env var when the macro starts.  The variant name is used to
+// pick the output subdir ../results/<scheme>_<variant>/.
+struct VariantConfig {
+    std::string                name              = "nominal";
+    double                     bw_gamma_scale    = 1.0;            // scales bwGam0 and Gamma limits for all 7 unbound states
+    std::array<int,    7>      bw_L              = {1,2,2,2,2,2,2};
+    std::array<bool,   7>      state_drop        = {false,false,false,false,false,false,false};
+    double                     ps1n_scale        = 1.0;            // multiplies initial PS1n amp + its upper limit
+    double                     ps2n_scale        = 1.0;            // same for PS2n
+    double                     bg_linear_scale   = 1.0;            // multiplies the linear-bg constant's upper limit
+    bool                       contaminant_enable = false;          // enable 4th Gaussian in [0.6, 1.1] MeV
+    bool                       relax_bound_sigma  = false;          // let sigma of the 3 bound Gaussians float in [0.08, 0.25]
+    std::string                cut_set            = "nominal";       // "nominal" = polar>=90 only; "strict" adds E_ej<8 + vertex_z in [2,98]
+};
+
+inline double envD(const char* name, double dflt) {
+    const char* v = std::getenv(name);
+    if (!v || !*v) return dflt;
+    try { return std::stod(v); } catch (...) { return dflt; }
+}
+inline std::string envS(const char* name, const std::string& dflt) {
+    const char* v = std::getenv(name);
+    return (v && *v) ? std::string(v) : dflt;
+}
+// Parse a 7-element comma-separated integer list ("1,2,2,3,0,2,3"); empty/short -> defaults.
+inline std::array<int, 7> envIntList7(const char* name, const std::array<int, 7>& dflt) {
+    const char* v = std::getenv(name);
+    if (!v || !*v) return dflt;
+    std::array<int, 7> out = dflt;
+    std::stringstream ss(v);
+    std::string tok;
+    int i = 0;
+    while (std::getline(ss, tok, ',') && i < 7) {
+        try { out[i++] = std::stoi(tok); } catch (...) { /* keep dflt */ ++i; }
+    }
+    return out;
+}
+inline std::array<bool, 7> envBoolList7(const char* name, const std::array<bool, 7>& dflt) {
+    const char* v = std::getenv(name);
+    if (!v || !*v) return dflt;
+    std::array<bool, 7> out = dflt;
+    std::stringstream ss(v);
+    std::string tok;
+    int i = 0;
+    while (std::getline(ss, tok, ',') && i < 7) {
+        try { out[i++] = (std::stoi(tok) != 0); } catch (...) { ++i; }
+    }
+    return out;
+}
+
+inline VariantConfig loadVariantFromEnv() {
+    VariantConfig c;
+    c.name              = envS("VARIANT_NAME", c.name);
+    c.bw_gamma_scale    = envD("BW_GAMMA_SCALE", c.bw_gamma_scale);
+    c.bw_L              = envIntList7("BW_L_OVERRIDE", c.bw_L);
+    c.state_drop        = envBoolList7("STATE_DROP",   c.state_drop);
+    c.ps1n_scale        = envD("PS1N_SCALE", c.ps1n_scale);
+    c.ps2n_scale        = envD("PS2N_SCALE", c.ps2n_scale);
+    c.bg_linear_scale   = envD("BG_LINEAR_SCALE", c.bg_linear_scale);
+    c.contaminant_enable = (envD("CONTAMINANT_ENABLE", 0.0) != 0.0);
+    c.relax_bound_sigma  = (envD("RELAX_BOUND_SIGMA",  0.0) != 0.0);
+    c.cut_set            = envS("CUT_SET", c.cut_set);
+    return c;
+}
 }  // namespace
 
 // ============================== utilities ===================================
@@ -224,6 +308,12 @@ public:
         val += p[37] * g_PS1n->Eval(x[0]);
         val += p[38];
         val += p[39] * g_PS2n->Eval(x[0]);
+        // p[40..42] = contaminant Gaussian (Amp, mean, sigma).  When the
+        // CONTAMINANT_ENABLE variant is disabled the amp is fixed to 0 so
+        // this term contributes nothing -- the nominal fit is unchanged.
+        if (p[40] > 0.0 && p[42] > 0.0) {
+            val += p[40] * TMath::Gaus(x[0], p[41], p[42], false);
+        }
         return val;
     }
 };
@@ -238,9 +328,29 @@ void C16_pd_AngBins(int scheme = 0) {
     const auto& kBins   = schemeDef.bins;
     const auto& kBinTag = schemeDef.tags;
     const size_t nBins  = kBins.size();
-    const TString outTag(schemeDef.name);
+
+    // Load systematic-variant knobs from env vars.  Nominal if none set.
+    const VariantConfig vcfg = loadVariantFromEnv();
+    kBW_L = vcfg.bw_L;     // SpectralModel reads this global
+
+    // outTag = "<scheme>" for nominal, "<scheme>_<variant>" otherwise.
+    TString outTag(schemeDef.name);
+    if (vcfg.name != "nominal") outTag += TString("_") + vcfg.name.c_str();
     const TString resultsDir = TString("../results/") + outTag;
     const TString plotsDir   = TString("../plots/")   + outTag;
+    std::cout << "variant = " << vcfg.name
+              << "  bw_gamma_scale=" << vcfg.bw_gamma_scale
+              << "  ps1n_scale=" << vcfg.ps1n_scale
+              << "  ps2n_scale=" << vcfg.ps2n_scale
+              << "  bg_linear_scale=" << vcfg.bg_linear_scale
+              << "  contaminant=" << (vcfg.contaminant_enable ? "ON" : "off")
+              << "  relax_bound_sigma=" << (vcfg.relax_bound_sigma ? "ON" : "off")
+              << "  cut_set=" << vcfg.cut_set << "\n";
+    std::cout << "  bw_L = {";
+    for (int i = 0; i < 7; ++i) std::cout << kBW_L[i] << (i < 6 ? "," : "");
+    std::cout << "}\n  state_drop = {";
+    for (int i = 0; i < 7; ++i) std::cout << (vcfg.state_drop[i] ? "1" : "0") << (i < 6 ? "," : "");
+    std::cout << "}\n";
     gSystem->mkdir(resultsDir, /*recursive=*/true);
     gSystem->mkdir(plotsDir,   /*recursive=*/true);
     std::cout << "binning scheme = " << outTag
@@ -248,7 +358,7 @@ void C16_pd_AngBins(int scheme = 0) {
               << kBins.front().lo << "-" << kBins.back().hi << " deg)\n";
 
     // ---------------- data loading ----------------
-    const TString dataDir = "/home/yassid/C16_dp/C16_dp/InterpSolver_root/";
+    const TString dataDir = "/Users/quantumlab/Downloads/C16_dp/InterpSolver_root/";
     // Full run list: union of the parent C16_pd_ana.C (45 runs starting at
     // 0016) and the github _ang_dist.C macro (28 runs ending at 0103).
     // All 47 are present in InterpSolver_root/.  Matching this set is what
@@ -305,13 +415,21 @@ void C16_pd_AngBins(int scheme = 0) {
             ++total_events;
             const double p_ej = Brho * kZ_ej * 2.99792458e2;          // MeV/c
             const double E_ej = std::sqrt(p_ej*p_ej + kM_p*kM_p) - kM_p;
-            // Cut set matching the parent C16_pd_ana.C (used for the PDF
-            // presentation): only the polar-angle floor.  The github
-            // _ang_dist.C added E_ej<8 + zPos in [2,98] which discard ~3x
-            // events and were not used for the PDF figures.
+            // Cut set:
+            //   "nominal" (default) -- matches the parent C16_pd_ana.C used
+            //   for the PDF presentation: only the polar-angle floor.
+            //   "strict" -- adds E_ej < 8 MeV and vertex_z in [2, 98] cm from
+            //   the github _ang_dist.C macro.  These reject edge / punch-
+            //   through tracks in the AT-TPC; expected to suppress
+            //   misreconstructed-vertex tails that produce a localised
+            //   low-Ex (0.4-1.0 MeV) excess seen in the nominal residuals.
             const double thetaDeg = theta * TMath::RadToDeg();
             if (thetaDeg < 90.0) continue;
             const double zCm = zPos * 100.0;
+            if (vcfg.cut_set == "strict") {
+                if (E_ej >= 8.0) continue;
+                if (zCm < 2.0 || zCm > 98.0) continue;
+            }
 
             auto [ex_raw, theta_cm] = kine_2b(kM_C16, kM_d, kM_p, kM_C17,
                                               kEbeam, theta, E_ej);
@@ -384,19 +502,39 @@ void C16_pd_AngBins(int scheme = 0) {
     auto* g_PS1n_incl = histoToTgraph(h_PS_1n_incl, "g_PS1n_incl");
     auto* g_PS2n_incl = histoToTgraph(h_PS_2n_incl, "g_PS2n_incl");
     SpectralModel* mInclusive = new SpectralModel(g_PS1n_incl, g_PS2n_incl);
-    TF1* fInclusive = new TF1("fInclusive", mInclusive, kEbinMin, kEbinMax, 40, "SpectralModel");
+    TF1* fInclusive = new TF1("fInclusive", mInclusive, kEbinMin, kEbinMax, kNPar, "SpectralModel");
 
     // Initial values: amplitudes scaled by entries, parameters from the PDF table.
     const double scaleIncl = std::max(1.0, hInclusive->GetMaximum());
-    std::vector<double> p0(40, 0.0);
+    std::vector<double> p0(kNPar, 0.0);
     // Gaussians (gs, 0.218, 0.350): (Amp, mean, sigma)
     p0[0] = 0.4 * scaleIncl;  p0[1] = 0.000; p0[2] = 0.120;
     p0[3] = 0.6 * scaleIncl;  p0[4] = 0.218; p0[5] = 0.120;
     p0[6] = 0.2 * scaleIncl;  p0[7] = 0.350; p0[8] = 0.120;
     // BW: (Amp, E0, Gamma0, sigma) -- start from PDF centroids and widths
     const double bwE0[7]   = {2.763, 2.980, 3.661, 4.231, 4.841, 5.910, 6.300};
-    const double bwGam0[7] = {0.050, 0.200, 0.398, 0.500, 0.300, 1.500, 0.396};
+    const double bwGam0Lit[7] = {0.050, 0.200, 0.398, 0.500, 0.300, 1.500, 0.396};
     const double bwAmp0[7] = {  20,   40,    80,    80,    40,   100,    80};
+    // Apply BW-width scale systematic: multiply both the initial width and
+    // the (Lo, Hi) limits by vcfg.bw_gamma_scale.  Scale = 1.0 -> nominal.
+    double bwGam0[7], bwGamLo[7], bwGamHi[7];
+    // Second-pass widening: the previous BW Gamma ranges still pegged for
+    // states 0, 1, 4, 6.  Floors below the energy resolution (~120 keV) are
+    // effectively a free width (Voigt collapses to the Gaussian core); we
+    // drop to 1 keV on the narrow-pushers.  State 4 (4.841 1/2+) wants Gamma
+    // beyond 0.80 -> raise to 1.20 (a "data-tells-us-broader" claim worth
+    // flagging in the writeup).
+    //  state 0 (2.763): Gamma 0.005 -> 0.001 (free below resolution)
+    //  state 1 (2.980): Gamma 0.10  -> 0.02  (was pegged low after E0 widened)
+    //  state 4 (4.841): Gamma 0.80  -> 1.20  (data wants significantly broader)
+    //  state 6 (6.30):  Gamma 0.05  -> 0.001 (free below resolution)
+    const double bwGamLoLit[7] = {0.001, 0.02, 0.10, 0.10, 0.10, 0.25, 0.001};
+    const double bwGamHiLit[7] = {0.080, 0.30, 0.50, 0.70, 1.20, 1.80, 0.55};
+    for (int b = 0; b < 7; ++b) {
+        bwGam0[b]  = bwGam0Lit[b]  * vcfg.bw_gamma_scale;
+        bwGamLo[b] = bwGamLoLit[b] * vcfg.bw_gamma_scale;
+        bwGamHi[b] = bwGamHiLit[b] * vcfg.bw_gamma_scale;
+    }
     for (int b = 0; b < 7; ++b) {
         int o = 9 + 4*b;
         p0[o]   = bwAmp0[b];
@@ -404,43 +542,97 @@ void C16_pd_AngBins(int scheme = 0) {
         p0[o+2] = bwGam0[b];
         p0[o+3] = 0.120;
     }
-    p0[37] = 0.010;   // 1n PS amplitude
-    p0[38] = 1.000;   // linear bg constant
-    p0[39] = 0.500;   // 2n PS amplitude
+    // PS / bg initials, scaled by variant knobs (nominal => identity).
+    p0[37] = 0.010 * vcfg.ps1n_scale;   // 1n PS amplitude
+    p0[38] = 1.000 * vcfg.bg_linear_scale;   // linear bg constant
+    p0[39] = 0.500 * vcfg.ps2n_scale;   // 2n PS amplitude
+    // Contaminant Gaussian initials.  Center ~0.85 MeV from the residual peak
+    // and sigma ~0.18 MeV.  Amplitude either 0 (disabled) or a few % of the
+    // inclusive peak (enabled).
+    p0[40] = vcfg.contaminant_enable ? 0.20 * scaleIncl : 0.0;
+    p0[41] = 0.85;
+    p0[42] = 0.18;
     for (size_t i = 0; i < p0.size(); ++i) fInclusive->SetParameter(i, p0[i]);
 
-    // Gaussian limits/locks
-    fInclusive->SetParLimits(0, 1, 5*scaleIncl);   fInclusive->FixParameter(1, 0.000); fInclusive->FixParameter(2, 0.120);
-    fInclusive->SetParLimits(3, 1, 5*scaleIncl);   fInclusive->FixParameter(4, 0.218); fInclusive->FixParameter(5, 0.120);
-    fInclusive->SetParLimits(6, 1, 5*scaleIncl);   fInclusive->FixParameter(7, 0.350); fInclusive->FixParameter(8, 0.120);
-    // BW limits (centroid +/- a few sigma, Gamma in PDF range)
-    const double bwCenLo[7] = {2.65, 2.98, 3.50, 4.10, 4.80, 5.85, 6.30};
-    const double bwCenHi[7] = {2.80, 3.02, 3.70, 4.40, 5.00, 6.10, 6.50};
-    const double bwGamLo[7] = {0.025, 0.10, 0.10, 0.10, 0.10, 0.25, 0.15};
-    const double bwGamHi[7] = {0.080, 0.30, 0.50, 0.70, 0.50, 1.80, 0.55};
+    // Bound Gaussian limits.  By default sigma is fixed at 0.120 (the AT-TPC
+    // resolution from the parent macro).  The RELAX_BOUND_SIGMA variant lets
+    // sigma float in [0.08, 0.25] to test whether the low-Ex residual excess
+    // is really an extended bound-state lineshape.
+    fInclusive->SetParLimits(0, 1, 5*scaleIncl);   fInclusive->FixParameter(1, 0.000);
+    fInclusive->SetParLimits(3, 1, 5*scaleIncl);   fInclusive->FixParameter(4, 0.218);
+    fInclusive->SetParLimits(6, 1, 5*scaleIncl);   fInclusive->FixParameter(7, 0.350);
+    if (vcfg.relax_bound_sigma) {
+        fInclusive->SetParLimits(2, 0.08, 0.25);
+        fInclusive->SetParLimits(5, 0.08, 0.25);
+        fInclusive->SetParLimits(8, 0.08, 0.25);
+    } else {
+        fInclusive->FixParameter(2, 0.120);
+        fInclusive->FixParameter(5, 0.120);
+        fInclusive->FixParameter(8, 0.120);
+    }
+    // BW limits (centroid +/- a few sigma, Gamma in PDF range x scale).
+    // Shell-model-driven priors -- we keep their centers and widen the side
+    // the data fit pushes against.  Second-pass widening after first round
+    // still showed pegs on:
+    //  - state 1 (2.980) E0 essentially at 3.10  -> raise upper to 3.20
+    //  - state 2 (3.661 NEW) E0 at upper 3.70    -> raise to 3.85
+    const double bwCenLo[7] = {2.65, 2.95, 3.50, 4.10, 4.80, 5.85, 6.30};
+    const double bwCenHi[7] = {2.95, 3.20, 3.85, 4.40, 5.00, 6.10, 6.50};
     for (int b = 0; b < 7; ++b) {
         int o = 9 + 4*b;
-        fInclusive->SetParLimits(o,     0.1,  10*scaleIncl);
-        fInclusive->SetParLimits(o + 1, bwCenLo[b], bwCenHi[b]);
-        fInclusive->SetParLimits(o + 2, bwGamLo[b], bwGamHi[b]);
+        if (vcfg.state_drop[b]) {
+            // Force amplitude to ~0 to drop this state from the model.
+            fInclusive->FixParameter(o,     0.0);
+            fInclusive->FixParameter(o + 1, bwE0[b]);
+            fInclusive->FixParameter(o + 2, bwGam0[b]);
+        } else {
+            fInclusive->SetParLimits(o,     0.1,  10*scaleIncl);
+            fInclusive->SetParLimits(o + 1, bwCenLo[b], bwCenHi[b]);
+            fInclusive->SetParLimits(o + 2, bwGamLo[b], bwGamHi[b]);
+        }
         fInclusive->FixParameter(o + 3, 0.120);
     }
-    fInclusive->SetParLimits(37, 0.001, 0.10);
-    fInclusive->SetParLimits(38, 0.25,  3.0);
-    fInclusive->SetParLimits(39, 0.05,  2.0);
+    // PS / bg upper limits scaled by variant knobs.  Floors held at 1e-3 to
+    // keep Minuit from running them negative; ceiling tightened by 10x more
+    // headroom than the initial value so the fit can climb if needed.
+    fInclusive->SetParLimits(37, 0.001, 0.10 * std::max(1.0, vcfg.ps1n_scale));
+    // linear-bg upper raised from 3.0 to 12.0 -- the prior 3.0 was pegged by
+    // the fit (bg_x3.00 syst variant settled at p[38] ~ 8.76), driving the
+    // inclusive chi2/NDF from 1.81 -> 2.82.  New limit gives the continuum
+    // term room while keeping the BW amplitudes from absorbing real bg.
+    fInclusive->SetParLimits(38, 0.25, 12.0 * std::max(1.0, vcfg.bg_linear_scale));
+    fInclusive->SetParLimits(39, 0.05,  2.0  * std::max(1.0, vcfg.ps2n_scale));
+
+    // Contaminant Gaussian limits.  When disabled all three are fixed at the
+    // p0 values (amp=0 -> no contribution to the model).  When enabled the
+    // mean is bracketed around the observed residual peak (~0.85 MeV), the
+    // sigma in [0.10, 0.40] (wider than the bound-state resolution but well
+    // below the BW penetrability-driven widths), and amplitude positive.
+    if (vcfg.contaminant_enable) {
+        fInclusive->SetParLimits(40, 0.1, 5*scaleIncl);
+        // Wider mean window than the residual peak suggested -- first pass
+        // pegged at the 0.60 lower limit, so allow down to 0.45 MeV (still
+        // above the 0.350 bound-state Gaussian center).
+        fInclusive->SetParLimits(41, 0.45, 1.20);
+        fInclusive->SetParLimits(42, 0.08, 0.45);
+    } else {
+        fInclusive->FixParameter(40, 0.0);
+        fInclusive->FixParameter(41, 0.85);
+        fInclusive->FixParameter(42, 0.18);
+    }
 
     std::cout << "\n--- inclusive fit ---\n";
     hInclusive->Fit(fInclusive, "RQM0");
     hInclusive->Fit(fInclusive, "RM");      // second pass with full Minuit output
 
     // Snapshot positions and widths from inclusive (these will be frozen per bin)
-    std::vector<double> incl(40);
-    for (int i = 0; i < 40; ++i) incl[i] = fInclusive->GetParameter(i);
+    std::vector<double> incl(kNPar);
+    for (int i = 0; i < kNPar; ++i) incl[i] = fInclusive->GetParameter(i);
 
     // ---------------- per-bin fits ------------------
     std::vector<TF1*> fBin(nBins, nullptr);
     std::vector<SpectralModel*> mBin(nBins, nullptr);
-    std::vector<std::vector<double>> binPars(nBins, std::vector<double>(40, 0.0));
+    std::vector<std::vector<double>> binPars(nBins, std::vector<double>(kNPar, 0.0));
     std::vector<double>              binChi2(nBins, 0.0);
     std::vector<int>                 binNdf(nBins, 0);
 
@@ -448,12 +640,12 @@ void C16_pd_AngBins(int scheme = 0) {
         auto* g1 = histoToTgraph(h_PS_1n_bin[b], Form("g_PS1n_b%zu", b));
         auto* g2 = histoToTgraph(h_PS_2n_bin[b], Form("g_PS2n_b%zu", b));
         mBin[b] = new SpectralModel(g1, g2);
-        fBin[b] = new TF1(Form("fBin_%zu", b), mBin[b], kEbinMin, kEbinMax, 40, "SpectralModel");
+        fBin[b] = new TF1(Form("fBin_%zu", b), mBin[b], kEbinMin, kEbinMax, kNPar, "SpectralModel");
 
         // Scale amplitudes by the ratio of integrals (rough warm start)
         const double scaleBin = std::max(1.0, hBin[b]->GetMaximum());
         const double scaleRatio = scaleBin / std::max(1.0, hInclusive->GetMaximum());
-        for (int i = 0; i < 40; ++i) fBin[b]->SetParameter(i, incl[i]);
+        for (int i = 0; i < kNPar; ++i) fBin[b]->SetParameter(i, incl[i]);
         for (int g = 0; g < 3; ++g)
             fBin[b]->SetParameter(3*g, std::max(0.5, incl[3*g] * scaleRatio));
         for (int bw = 0; bw < 7; ++bw)
@@ -461,6 +653,10 @@ void C16_pd_AngBins(int scheme = 0) {
         fBin[b]->SetParameter(37, std::max(1e-4, incl[37] * scaleRatio));
         fBin[b]->SetParameter(38, std::max(0.10, incl[38] * scaleRatio));
         fBin[b]->SetParameter(39, std::max(1e-2, incl[39] * scaleRatio));
+        // Contaminant amp: only meaningful if enabled, then scale-rate like the others
+        if (vcfg.contaminant_enable) {
+            fBin[b]->SetParameter(40, std::max(0.5, incl[40] * scaleRatio));
+        }
 
         // Lock everything from inclusive except amplitudes + bg
         // Gaussians: amplitude free, mean/sigma fixed
@@ -469,17 +665,32 @@ void C16_pd_AngBins(int scheme = 0) {
             fBin[b]->FixParameter(3*g + 1, incl[3*g + 1]);
             fBin[b]->FixParameter(3*g + 2, incl[3*g + 2]);
         }
-        // BWs: amplitude free, E0/Gamma/sigma fixed
+        // BWs: amplitude free, E0/Gamma/sigma fixed (or fully dropped per variant)
         for (int bw = 0; bw < 7; ++bw) {
             int o = 9 + 4*bw;
-            fBin[b]->SetParLimits(o, 0.01, 20*scaleBin);
+            if (vcfg.state_drop[bw]) {
+                fBin[b]->FixParameter(o,     0.0);
+            } else {
+                fBin[b]->SetParLimits(o, 0.01, 20*scaleBin);
+            }
             fBin[b]->FixParameter(o + 1, incl[o + 1]);
             fBin[b]->FixParameter(o + 2, incl[o + 2]);
             fBin[b]->FixParameter(o + 3, incl[o + 3]);
         }
-        fBin[b]->SetParLimits(37, 1e-5, 0.20);
-        fBin[b]->SetParLimits(38, 0.05, 5.00);
-        fBin[b]->SetParLimits(39, 1e-3, 3.00);
+        // PS / linear-bg limits scaled by variant knobs
+        fBin[b]->SetParLimits(37, 1e-5, 0.20 * std::max(1.0, vcfg.ps1n_scale));
+        // linear-bg upper raised from 5.0 to 12.0 to match the widened
+        // inclusive-fit limit (see comment at the inclusive SetParLimits).
+        fBin[b]->SetParLimits(38, 0.05, 12.0 * std::max(1.0, vcfg.bg_linear_scale));
+        fBin[b]->SetParLimits(39, 1e-3, 3.00 * std::max(1.0, vcfg.ps2n_scale));
+        // Contaminant Gaussian: lock mean+sigma from inclusive; free amp only.
+        if (vcfg.contaminant_enable) {
+            fBin[b]->SetParLimits(40, 0.01, 20*scaleBin);
+        } else {
+            fBin[b]->FixParameter(40, 0.0);
+        }
+        fBin[b]->FixParameter(41, incl[41]);
+        fBin[b]->FixParameter(42, incl[42]);
 
         std::cout << "\n--- per-bin fit  " << kBinTag[b] << " deg ---\n";
         hBin[b]->Fit(fBin[b], "RQM0");
@@ -487,10 +698,68 @@ void C16_pd_AngBins(int scheme = 0) {
 
         binChi2[b] = fBin[b]->GetChisquare();
         binNdf[b]  = fBin[b]->GetNDF();
-        for (int i = 0; i < 40; ++i) binPars[b][i] = fBin[b]->GetParameter(i);
+        for (int i = 0; i < kNPar; ++i) binPars[b][i] = fBin[b]->GetParameter(i);
 
         std::cout << "    chi2/NDF = " << binChi2[b] << " / " << binNdf[b]
                   << " = " << binChi2[b] / std::max(1, binNdf[b]) << "\n";
+    }
+
+    // ---------------- spectral-fit quality summary -----------------
+    // Inclusive + per-bin chi2/NDF dumped to a CSV the systematics driver
+    // ingests for fit-quality comparisons across variants.
+    {
+        std::ofstream fq((resultsDir + "/fit_quality.csv").Data());
+        fq << "scope,bin_lo,bin_hi,bin_center,chi2,ndf,chi2_per_ndf\n";
+        const double iChi2 = fInclusive->GetChisquare();
+        const int    iNdf  = fInclusive->GetNDF();
+        fq << "inclusive,"
+           << kBins.front().lo << "," << kBins.back().hi << ","
+           << 0.5 * (kBins.front().lo + kBins.back().hi) << ","
+           << iChi2 << "," << iNdf << ","
+           << (iNdf > 0 ? iChi2 / iNdf : 0.0) << "\n";
+        for (size_t b = 0; b < nBins; ++b) {
+            fq << "bin,"
+               << kBins[b].lo << "," << kBins[b].hi << "," << kBins[b].center()
+               << "," << binChi2[b] << "," << binNdf[b] << ","
+               << (binNdf[b] > 0 ? binChi2[b] / binNdf[b] : 0.0) << "\n";
+        }
+        fq.close();
+        std::cout << "wrote fit_quality.csv  (inclusive chi2/NDF = "
+                  << iChi2 << " / " << iNdf << " = "
+                  << (iNdf > 0 ? iChi2 / iNdf : 0.0) << ")\n";
+    }
+
+    // ---------------- inclusive-fit dump (for residual / contaminant studies) -
+    // Per-bin (Ex, data, data_err, fit_total, sum_gauss, sum_bw, ps1n, bg, ps2n).
+    // Lets us look at residuals offline without re-running ROOT.
+    {
+        std::ofstream ifd((resultsDir + "/inclusive_fit.csv").Data());
+        ifd << "Ex_MeV,data,data_err,fit_total,sum_gauss,sum_bw,ps1n,bg,ps2n,contam\n";
+        for (int ib = 1; ib <= hInclusive->GetNbinsX(); ++ib) {
+            const double Ex = hInclusive->GetBinCenter(ib);
+            if (Ex < kEbinMin || Ex > kEbinMax) continue;
+            const double d  = hInclusive->GetBinContent(ib);
+            const double de = hInclusive->GetBinError(ib);
+            double sumG = 0.0, sumBW = 0.0;
+            for (int g = 0; g < 3; ++g) {
+                sumG += incl[3*g] * TMath::Gaus(Ex, incl[3*g+1], incl[3*g+2], false);
+            }
+            for (int b = 0; b < 7; ++b) {
+                int o = 9 + 4*b;
+                sumBW += BWModificada(Ex, incl[o], incl[o+1], incl[o+2], incl[o+3], kBW_L[b]);
+            }
+            const double ps1n = incl[37] * g_PS1n_incl->Eval(Ex);
+            const double bgv  = incl[38];
+            const double ps2n = incl[39] * g_PS2n_incl->Eval(Ex);
+            const double contam = (incl[40] > 0.0 && incl[42] > 0.0)
+                ? incl[40] * TMath::Gaus(Ex, incl[41], incl[42], false) : 0.0;
+            const double tot  = sumG + sumBW + ps1n + bgv + ps2n + contam;
+            ifd << Ex << "," << d << "," << de << "," << tot << ","
+                << sumG << "," << sumBW << "," << ps1n << "," << bgv << ","
+                << ps2n << "," << contam << "\n";
+        }
+        ifd.close();
+        std::cout << "wrote inclusive_fit.csv\n";
     }
 
     // ---------------- yields ------------------
@@ -512,11 +781,13 @@ void C16_pd_AngBins(int scheme = 0) {
     const double binWidth = (kEbinMax - kEbinMin) / kNumberBins;
     const double sqrt2pi  = std::sqrt(2.0 * TMath::Pi());
 
-    // 2D table per bin per state for downstream conversion
+    // 2D table per bin per state for downstream conversion.  Slots 0..2 are
+    // the three bound Gaussians, 3..9 are the seven BWs, and slot 10 is the
+    // contaminant Gaussian (zero when the variant is disabled).
     std::vector<std::vector<double>> yields(nBins,
-                                            std::vector<double>(10, 0.0));
+                                            std::vector<double>(11, 0.0));
     std::vector<std::vector<double>> yieldsErr(nBins,
-                                               std::vector<double>(10, 0.0));
+                                               std::vector<double>(11, 0.0));
 
     for (size_t b = 0; b < nBins; ++b) {
         // Gaussians
@@ -551,6 +822,21 @@ void C16_pd_AngBins(int scheme = 0) {
             csv << kBins[b].lo << "," << kBins[b].hi << "," << kBins[b].center()
                 << "," << kBWLabel[bw] << "," << binPars[b][o + 1] << ","
                 << Y << "," << dY << "\n";
+        }
+        // Contaminant Gaussian yield (Y = amp * sigma * sqrt(2pi) / binWidth).
+        // Always emitted -- amp is 0 when the variant is disabled, so the row
+        // is informative even in that case.
+        {
+            const double cAmp  = binPars[b][40];
+            const double cMean = binPars[b][41];
+            const double cSig  = binPars[b][42];
+            const double Y     = cAmp * cSig * sqrt2pi / binWidth;
+            const double dAmp  = fBin[b]->GetParError(40);
+            const double dY    = (Y > 0.0 && cAmp > 0.0) ? Y * dAmp / cAmp : 0.0;
+            yields[b][10]    = Y;
+            yieldsErr[b][10] = dY;
+            csv << kBins[b].lo << "," << kBins[b].hi << "," << kBins[b].center()
+                << ",contaminant," << cMean << "," << Y << "," << dY << "\n";
         }
     }
     csv.close();
@@ -595,8 +881,8 @@ void C16_pd_AngBins(int scheme = 0) {
     };
     std::vector<EffTable> effTables;
     {
-        const std::string effDir = "/home/yassid/C16_dp/C16_dp/efficiency/";
-        const std::string rcsDir = "/home/yassid/fair_install/16C_dp/RCS/";
+        const std::string effDir = "/Users/quantumlab/Downloads/C16_dp/efficiency/";
+        const std::string rcsDir = "/Users/quantumlab/Downloads/C16_dp/RCS/";
         std::vector<std::pair<double, std::string>> srcs = {
             {0.0, rcsDir + "efficiency_16Cdp_0m.txt"},   // 0m lives in RCS/
             {2.0, effDir + "efficiency_16Cdp_2m.txt"},
@@ -746,8 +1032,8 @@ void C16_pd_AngBins(int scheme = 0) {
         // Total
         auto* mTot = new SpectralModel(g1, g2);
         auto* fTot = new TF1(Form("fTot_%s", tag), mTot,
-                             kEbinMin, kEbinMax, 40, "SpectralModel");
-        for (int i = 0; i < 40; ++i) fTot->SetParameter(i, p[i]);
+                             kEbinMin, kEbinMax, kNPar, "SpectralModel");
+        for (int i = 0; i < kNPar; ++i) fTot->SetParameter(i, p[i]);
         fTot->SetLineColor(kRed); fTot->SetLineWidth(2); fTot->SetNpx(1000);
         fTot->Draw("same");
 
@@ -800,6 +1086,18 @@ void C16_pd_AngBins(int scheme = 0) {
         fBg->SetLineColor(kGray+2); fBg->SetLineStyle(3); fBg->SetLineWidth(1);
         fBg->Draw("same");
 
+        // Contaminant Gaussian (magenta) -- only drawn when amplitude > 0,
+        // so the nominal fit (CONTAMINANT_ENABLE=0) sees no extra curve.
+        TF1* fCont = nullptr;
+        if (p[40] > 0.0 && p[42] > 0.0) {
+            double cA = p[40], cM = p[41], cS = p[42];
+            fCont = new TF1(Form("fCont_%s", tag), "gaus", kEbinMin, kEbinMax);
+            fCont->SetParameters(cA, cM, cS);
+            fCont->SetLineColor(kMagenta+1); fCont->SetLineStyle(2);
+            fCont->SetLineWidth(1); fCont->SetNpx(500);
+            fCont->Draw("same");
+        }
+
         if (drawLegend) {
             auto* leg = new TLegend(0.13, 0.55, 0.40, 0.88);
             leg->SetTextSize(0.025);
@@ -815,6 +1113,7 @@ void C16_pd_AngBins(int scheme = 0) {
             leg->AddEntry(fPS1, "1n Phase Space",  "l");
             leg->AddEntry(fPS2, "2n Phase Space",  "l");
             leg->AddEntry(fBg,  "Linear background", "l");
+            if (fCont) leg->AddEntry(fCont, "Contaminant Gauss", "l");
             leg->Draw();
         }
     };

@@ -162,3 +162,16 @@ fig.tight_layout()
 out = os.path.join(PLOTS_DIR, "plots_L_scan.png")
 fig.savefig(out, dpi=130, bbox_inches="tight")
 print(f"\nsaved: {out}")
+
+# Machine-readable summary CSV, ingested by the systematics driver.
+csv_path = os.path.join(RESULTS_DIR, "L_scan.csv")
+with open(csv_path, "w") as fh:
+    fh.write("state,bestL,tie,tieL,c2v_L0,c2v_L1,c2v_L2,c2v_L3,amp_L0,amp_L1,amp_L2,amp_L3\n")
+    for key, (title, fits, bestL, tie, tieL) in zip(state_keys, results):
+        c2vs = ["nan", "nan", "nan", "nan"]
+        amps = ["0",   "0",   "0",   "0"]
+        for L, a, da, c2v, ndf in fits:
+            c2vs[L] = f"{c2v:.4f}" if np.isfinite(c2v) else "nan"
+            amps[L] = f"{a:.6g}"
+        fh.write(f"{key},{bestL},{int(tie)},{tieL}," + ",".join(c2vs) + "," + ",".join(amps) + "\n")
+print(f"saved: {csv_path}")
