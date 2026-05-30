@@ -415,6 +415,24 @@ def build():
         "limit is stats/efficiency, not bg.",
     ], size=11)
 
+    # ---- 19. backup: 0.45 MeV contaminant fingerprint -----------------
+    s = blank(prs)
+    header(s, "Backup: the 0.45 MeV contaminant is a low-energy proton "
+           "background", "contaminant")
+    pic(s, os.path.join(PLOTS, "contam_fingerprint.png"), 0.15, 1.1, 8.7, 5.6)
+    text(s, 9.0, 1.25, 4.2, 5.5, [
+        "Back-angle feature: ~87% of its fitted yield at θ_cm ≥ 30° "
+        "(contam_vs_angle).",
+        "Fingerprint (47 runs, 56k events): contaminant protons have E_ej ≈ "
+        "2.5 MeV vs ~5.4 MeV for genuine transfer at the same back angles.",
+        "Same ~2.5 MeV forward too — a fixed low-energy population.",
+        "A real 0.45 MeV ¹⁷C state would give MORE energetic protons than the "
+        "Eₓ≈4 reference, not half ⇒ these don't obey ¹⁶C(d,p) kinematics.",
+        "Vertex ~9 cm downstream (62.7 vs 53.4 cm).",
+        "⇒ low-energy proton background, NOT a ¹⁷C level; a back-angle E_ej / "
+        "vertex cut would remove it.",
+    ], size=12)
+
     prs.save(OUT)
     print("wrote", OUT, "(", len(prs.slides), "slides )")
 

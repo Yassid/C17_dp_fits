@@ -35,9 +35,17 @@ are what's left.
    θ_cm ≥ 31°**; one poorly-constrained 22-count blip at 16°). A feature at a
    *fixed apparent* Eₓ ≈ 0.45 MeV that only appears at back angles points to a
    kinematic mis-ID / different reaction locus, not a real ¹⁷C level.
-   **Next:** vertex_z and θ_lab fingerprint of the 0.4–1.1 MeV window to confirm
-   a non-D₂ channel (¹²C(d,p) backing, beam contaminant); if clean, convert the
-   systematic into a cut.
+   **Fingerprint done (2026-05-30, `fingerprint_contaminant.C`, 47 runs / 56k
+   events):** the back-angle contaminant protons have **E_ej ≈ 2.5 MeV vs ≈5.4
+   MeV for genuine transfer at the same angles** — and the same ~2.5 MeV as the
+   forward contaminant. A real low-Eₓ (0.45 MeV) ¹⁷C state would give protons
+   *more* energetic than the Eₓ≈4 reference, not half, so these events do **not**
+   obey ¹⁶C(d,p)¹⁷C kinematics. Vertex also shifted ~9 cm downstream (62.7 vs
+   53.4 cm). ⇒ **low-energy proton background, not a ¹⁷C level.**
+   **Next:** apply a back-angle E_ej (or vertex_z) cut to suppress it and confirm
+   the inclusive excess vanishes; optionally trace the E_ej–θ locus to a specific
+   channel (¹²C(d,p), beam halo). Figures: `plots/contam_fingerprint.png`,
+   `plots/contam_vs_angle.png`.
 
 5. **Publication-grade absolute C²S.**
    Current C²S are *shape-only* (weakly-bound approximation, bₑ=0.5 MeV):

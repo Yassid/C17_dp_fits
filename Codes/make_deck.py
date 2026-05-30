@@ -445,6 +445,27 @@ def build():
         ], fs=11, dy=0.058)
         page(pdf, fig)
 
+        # ---- 19. backup: 0.45 MeV contaminant fingerprint -----------
+        fig = slide("Backup: the 0.45 MeV contaminant is a low-energy "
+                    "proton background", "contaminant")
+        add_image(fig, os.path.join(PLOTS, "contam_fingerprint.png"),
+                  (0.01, 0.09, 0.66, 0.76))
+        bullets(fig, 0.68, 0.81, [
+            r"Back-angle feature: ~87% of its fitted yield at "
+            r"$\theta_{cm}\geq30^\circ$ (contam_vs_angle).",
+            r"Fingerprint (47 runs, 56k events): contaminant protons have "
+            r"$E_{ej}\approx$2.5 MeV vs ~5.4 MeV for genuine transfer at the "
+            r"same back angles.",
+            r"Same ~2.5 MeV forward too — a fixed low-energy population.",
+            r"A real 0.45 MeV $^{17}$C state would give MORE energetic protons "
+            r"than the $E_x\approx$4 reference, not half $\Rightarrow$ these "
+            r"don't obey $^{16}$C(d,p) kinematics.",
+            r"Vertex ~9 cm downstream (62.7 vs 53.4 cm).",
+            r"$\Rightarrow$ low-energy proton background, NOT a $^{17}$C level; "
+            r"a back-angle $E_{ej}$/vertex cut would remove it.",
+        ], fs=11.5, dy=0.075)
+        page(pdf, fig)
+
     print("wrote", OUT, "(", page.n - 1, "content slides + title )")
 
 
