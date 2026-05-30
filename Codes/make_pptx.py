@@ -417,20 +417,21 @@ def build():
 
     # ---- 19. backup: 0.45 MeV contaminant fingerprint -----------------
     s = blank(prs)
-    header(s, "Backup: the 0.45 MeV contaminant is a low-energy proton "
-           "background", "contaminant")
+    header(s, "Backup: 0.45 MeV contaminant - kinematic fingerprint "
+           "(inconclusive)", "contaminant")
     pic(s, os.path.join(PLOTS, "contam_fingerprint.png"), 0.15, 1.1, 8.7, 5.6)
     text(s, 9.0, 1.25, 4.2, 5.5, [
         "Back-angle feature: ~87% of its fitted yield at θ_cm ≥ 30° "
         "(contam_vs_angle).",
-        "Fingerprint (47 runs, 56k events): contaminant protons have E_ej ≈ "
-        "2.5 MeV vs ~5.4 MeV for genuine transfer at the same back angles.",
-        "Same ~2.5 MeV forward too — a fixed low-energy population.",
-        "A real 0.45 MeV ¹⁷C state would give MORE energetic protons than the "
-        "Eₓ≈4 reference, not half ⇒ these don't obey ¹⁶C(d,p) kinematics.",
-        "Vertex ~9 cm downstream (62.7 vs 53.4 cm).",
-        "⇒ low-energy proton background, NOT a ¹⁷C level; a back-angle E_ej / "
-        "vertex cut would remove it.",
+        "Caveat: the E_ej comparison is CIRCULAR — Eₓ is built from E_ej and θ, "
+        "so the 0.45-MeV window's protons must follow low-Eₓ kinematics; it "
+        "cannot separate signal from background.",
+        "Eₓ-independent vertex_z: the back-angle contaminant looks like genuine "
+        "transfer — no clear anomaly.",
+        "⇒ this simple test does NOT flag it as background; its nature is still "
+        "open.",
+        "Next: Eₓ-independent discriminants — track redchisq, spatial "
+        "clustering, slanted Eₓ(θ) ridge vs vertical band.",
     ], size=12)
 
     prs.save(OUT)

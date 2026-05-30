@@ -446,24 +446,23 @@ def build():
         page(pdf, fig)
 
         # ---- 19. backup: 0.45 MeV contaminant fingerprint -----------
-        fig = slide("Backup: the 0.45 MeV contaminant is a low-energy "
-                    "proton background", "contaminant")
+        fig = slide("Backup: 0.45 MeV contaminant - kinematic fingerprint "
+                    "(inconclusive)", "contaminant")
         add_image(fig, os.path.join(PLOTS, "contam_fingerprint.png"),
                   (0.01, 0.09, 0.66, 0.76))
-        bullets(fig, 0.68, 0.81, [
+        bullets(fig, 0.68, 0.82, [
             r"Back-angle feature: ~87% of its fitted yield at "
             r"$\theta_{cm}\geq30^\circ$ (contam_vs_angle).",
-            r"Fingerprint (47 runs, 56k events): contaminant protons have "
-            r"$E_{ej}\approx$2.5 MeV vs ~5.4 MeV for genuine transfer at the "
-            r"same back angles.",
-            r"Same ~2.5 MeV forward too — a fixed low-energy population.",
-            r"A real 0.45 MeV $^{17}$C state would give MORE energetic protons "
-            r"than the $E_x\approx$4 reference, not half $\Rightarrow$ these "
-            r"don't obey $^{16}$C(d,p) kinematics.",
-            r"Vertex ~9 cm downstream (62.7 vs 53.4 cm).",
-            r"$\Rightarrow$ low-energy proton background, NOT a $^{17}$C level; "
-            r"a back-angle $E_{ej}$/vertex cut would remove it.",
-        ], fs=11.5, dy=0.075)
+            r"Caveat: the $E_{ej}$ comparison is CIRCULAR — $E_x$ is built from "
+            r"$E_{ej},\theta$, so the window's protons must follow low-$E_x$ "
+            r"kinematics; it can't separate signal from background.",
+            r"$E_x$-independent vertex_z: the back-angle contaminant looks like "
+            r"genuine transfer — no clear anomaly.",
+            r"$\Rightarrow$ this simple test does NOT flag it as background; its "
+            r"nature is still open.",
+            r"Next: $E_x$-independent discriminants — track redchisq, spatial "
+            r"clustering, slanted $E_x(\theta)$ ridge vs vertical band.",
+        ], fs=12, dy=0.082)
         page(pdf, fig)
 
     print("wrote", OUT, "(", page.n - 1, "content slides + title )")
