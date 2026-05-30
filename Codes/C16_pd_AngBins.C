@@ -994,8 +994,13 @@ void C16_pd_AngBins(int scheme = 0) {
                 continue;
             }
             const double sigma_raw = (Y / (kNbeam * kNtarget)) / dOmega * kMbConv;
-            const double dSigma_stat = (Y > 0)
-                ? sigma_raw * std::sqrt(1.0/Y + std::pow(dY/Y, 2)) : 0.0;
+            // dY is the Minuit GetParError on the fitted amplitude (per-bin fit
+            // is a chi^2 fit to sqrt(N)-weighted histograms), so it already
+            // carries the Poisson statistics of the yield -- and the inter-
+            // component correlations the naive 1/Y term ignores.  A previous
+            // sqrt(1/Y + (dY/Y)^2) double-counted the statistics (sqrt(2)
+            // inflation in the Poisson-dominated limit); use dY/Y alone.
+            const double dSigma_stat = (Y > 0) ? sigma_raw * (dY / Y) : 0.0;
             const double sigma = sigma_raw / std::max(effVal, 1e-6);
             const double dSigma = std::sqrt(std::pow(dSigma_stat / std::max(effVal, 1e-6), 2) +
                                             std::pow(sigma * effErr / std::max(effVal, 1e-6), 2));

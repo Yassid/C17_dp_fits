@@ -74,21 +74,70 @@ approximation (be = 0.5 MeV in the WS for the n+16C form factor).
 Numbers below use the post-May-20 efficiency baseline (inclusive
 spectral-fit χ²/ν = 1.78, from `results/fine/L_scan.csv`).
 
+*χ²/ν refreshed 2026-05-30 after the dσ/dΩ stat-error fix (see *Absolute
+normalization* below): all seven L picks are unchanged and no near-tie
+flipped; the absolute χ²/ν rose ×1.3–1.5 because every L scales by the
+same factor.*
+
 | Ex (MeV) | Lit J^π | best L (χ²/ν) | next L (χ²/ν)          | comment                                                            |
 |----------|---------|---------------|------------------------|--------------------------------------------------------------------|
-| 2.763    | 1/2−    | L=3 (1.03)    | L=2 (1.04), L=1 (1.11) | three-way near-tie; AD too flat to distinguish                     |
-| 2.980    | 3/2+    | L=3 (1.87)    | L=2 (2.11)             | all L fits poor; 17.5° peak still not reproduced                   |
-| 3.661    | NEW     | **L=2 (1.07)**| L=3 (1.12)             | L=2/L=3 ambiguous; possible sd-pf intruder                         |
-| 4.231    | 3/2+    | **L=2 (0.44)**| L=3 (1.04)             | decisive d-wave; matches PDF                                       |
-| 4.841    | 1/2+    | **L=0 (2.38)**| L=1 (5.58)             | decisive s1/2 (L=1/2/3 all factor ≥2 worse), χ²/ν up from 0.30 pre-fix |
-| 5.91     | 3/2+    | L=2 (2.91)    | L=0 (3.10)             | L=2 marginal; AD shape poorly constrained                          |
-| 6.30     | 5/2+    | L=0 (0.30)    | L=2 (0.36), L=3 (0.36) | L=0 unphysical for 5/2⁺ (s1/2⊗0⁺ = 1/2⁺); L=2 essentially tied     |
+| 2.763    | 1/2−    | L=3 (1.41)    | L=2 (1.42), L=1 (1.61) | three-way near-tie; AD too flat to distinguish                     |
+| 2.980    | 3/2+    | L=3 (2.73)    | L=2 (3.05)             | all L fits poor; 17.5° peak still not reproduced                   |
+| 3.661    | NEW     | **L=2 (1.38)**| L=3 (1.45)             | L=2/L=3 ambiguous; possible sd-pf intruder                         |
+| 4.231    | 3/2+    | **L=2 (0.58)**| L=3 (1.38)             | decisive d-wave; matches PDF                                       |
+| 4.841    | 1/2+    | **L=0 (3.09)**| L=1 (7.35)             | decisive s1/2 (L=1/2/3 all factor ≥2 worse)                        |
+| 5.91     | 3/2+    | L=2 (3.55)    | L=0 (3.73)             | L=2/L=0 near-tie; AD shape poorly constrained                      |
+| 6.30     | 5/2+    | L=0 (0.34)    | L=3 (0.40), L=2 (0.41) | L=0 unphysical for 5/2⁺ (s1/2⊗0⁺ = 1/2⁺); L=2/3 essentially tied   |
 
 The absolute C²S_eff values are **shape-only**: the weakly-bound
 approximation gives the correct L-dependent angular shape but the magnitude
 is artificial (FRESCO sp-strength=1 peaks at ~10²–10³ mb/sr in this
 prescription). A continuum-binned (CDCC-like) or pole-residue treatment is
 needed for publication-quality absolute SFs.
+
+## Absolute normalization and dσ/dΩ uncertainties
+
+**Counts → cross section** (`Codes/C16_pd_AngBins.C`):
+σ(θ) = Y / (N_beam · N_target · ΔΩ) · 10 / ε, with N_beam = 161460.66,
+N_target = 0.019632 (the calibrated beam×target product distilled from the
+bound-state cell-7 absolute-norm calc), ΔΩ = 2π(cosθ_lo − cosθ_hi), and ε the
+(Ex, θ)-interpolated efficiency. Verified: the g.s. 10–12.5° point reproduces
+exactly from `yields.csv` (Y = 11.55 → σ = 0.829 mb/sr).
+
+**Absolute-scale check** (`Codes/om_elastic.py`, re-run 2026-05-30 against
+`~/Downloads/16C_dd_gs.txt`): the d+16C elastic forward lobe shares the
+entrance partition (same beam, target, luminosity) as the transfer, so an
+absolute OM elastic cross section that matches the data fixes the
+(N_beam · N_target) constant. Error-weighted ⟨data/OM⟩ over the forward lobe:
+
+| OMP                        | χ²/ndf | ⟨data/OM⟩ |
+|----------------------------|--------|-----------|
+| ADWA (the transfer OMP)    | 398    | 0.864     |
+| DA1p (light-target global) | 105    | 0.886     |
+| free 5-param fit           | 32     | 0.978     |
+
+The free-fit potential reproduces the absolute scale to ~2% (⟨data/OM⟩ =
+0.978 ± 0.043), but the **ADWA potential actually used in the transfer DWBA
+gives 0.864** — the data sit ~14 % below it. The honest normalization
+uncertainty is the **cross-potential spread, ≈0.86–0.98 (~12 %)**, to be
+quoted as a global scale uncertainty; it is NOT folded into the per-point
+`dsdo_err`. (Earlier notes citing "ADWA ≈ 0.98, χ²/ndf ≈ 1.8" predate the
+current `16C_dd_gs.txt`, dated 2026-05-29, and no longer reproduce.)
+
+**Per-point errors** (`dsdo_err_mbsr`): statistical only,
+σ·√((dY/Y)² + (ε_err/ε)²), with dY the Minuit amplitude error (a χ²-fit to
+√N-weighted histograms, so it already carries the Poisson statistics). A
+previous σ_raw·√(1/Y + (dY/Y)²) **double-counted the statistics** (√2
+inflation in the Poisson limit) — fixed in the macro 2026-05-30; the already-
+generated CSVs were reconciled in place by `Codes/fix_stat_err.py` (9714 rows
+across 90 files) and `Codes/fix_band_stat_err.py` (the systematic band)
+without re-running ROOT. Per-state **systematics** are the 82-variant min/max
+envelope in `results/systematics_dsdo_band_fine.csv`. The ~12% absolute-scale
+uncertainty is **correlated** across all states/angles (it shifts the absolute
+scale, not the relative picture), so it is carried as a separate outer band
+rather than added per-point; combined bands are tabulated in
+`results/dsdo_bands_fine.csv` and `results/yield_bands_fine.csv`
+(`Codes/fold_scale_band.py`).
 
 ## Running it
 
