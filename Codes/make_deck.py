@@ -465,6 +465,46 @@ def build():
         ], fs=12, dy=0.082)
         page(pdf, fig)
 
+        # ---- 20. comparison vs PLB 811 (Pereira-Lopez) --------------
+        fig = slide("Comparison with Pereira-Lopez et al. (PLB 811, 135939)",
+                    "bound states")
+        add_image(fig, os.path.join(PLOTS, "plb_overlay.png"),
+                  (0.02, 0.10, 0.60, 0.74))
+        fig.text(0.65, 0.83, "Bound-state C²S: PLB vs this work",
+                 fontsize=13, fontweight="bold", color=MAROON)
+        mono(fig, 0.65, 0.76, [
+            "state        l   PLB        this work",
+            "----------------------------------------",
+            "gs 3/2+      2   0.03       -> 0",
+            "0.217 1/2+   0   0.64(18)   0.54(10)",
+            "0.335 5/2+   2   0.62(13)   0.47-0.74",
+        ], fs=11, dy=0.05)
+        bullets(fig, 0.65, 0.46, [
+            r"Bound states benchmark our absolute scale vs the published "
+            r"measurement (17.2 MeV/u, finite-range Johnson-Tandy ADWA).",
+            r"1/2$^+$ and 5/2$^+$ reproduced within ~1$\sigma$ (zero-range "
+            r"Johnson-Soper ADWA, cleanest $E_x$ slice).",
+            r"Companion analysis: repo 16Cdp17C_PLB_comparison.",
+        ], fs=11.5, dy=0.08)
+        page(pdf, fig)
+
+        # ---- 21. PLB per-state panels -------------------------------
+        fig = slide("PLB 811 comparison: per-state bound-state fits",
+                    "bound states")
+        # left ~60%: the 3-panel per-state figure; right ~36%: the summed overlay
+        add_image(fig, os.path.join(PLOTS, "plb_cm_panels.png"),
+                  (0.015, 0.30, 0.62, 0.52))
+        add_image(fig, os.path.join(PLOTS, "plb_sfs_overlay.png"),
+                  (0.64, 0.34, 0.34, 0.46))
+        fig.text(0.02, 0.24, "Left: per-state d$\\sigma$/d$\\Omega$ vs FRESCO "
+                 "with the published spectroscopic factors  (a: bound-states "
+                 "sum,  b: 0.217 1/2$^+$, SF=0.64,  c: 0.335 5/2$^+$, SF=0.62).",
+                 fontsize=11, color=GREY, va="top")
+        fig.text(0.64, 0.27, "Right: paper SFs applied to our DWBA, summed vs "
+                 "efficiency-corrected data.", fontsize=11, color=GREY,
+                 va="top", wrap=True)
+        page(pdf, fig)
+
     print("wrote", OUT, "(", page.n - 1, "content slides + title )")
 
 
