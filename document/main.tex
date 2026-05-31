@@ -57,10 +57,14 @@ across optical potentials), carried as a correlated global scale. Orbital
 angular momenta are assigned by comparing each angular distribution to FRESCO
 ADWA single-particle shapes. A localized excess near $E_x\simeq0.45$~MeV, which
 concentrates at backward angles, is documented and carried as a model-dependence
-systematic. Results are compared to the previous \Cs\dp\ analysis of Movilla and
-Ayyad. The effective spectroscopic factors obtained here are shape-only (the
-weakly-bound approximation gives the correct angular shape but an artificial
-magnitude) and a continuum treatment is required for publication-grade values.
+systematic. Results are compared to the previous in-house \Cs\dp\ analysis of
+Movilla and Ayyad, and the bound-state spectroscopic factors are benchmarked
+against the published measurement of Pereira-Lopez \textit{et al.} (PLB 811,
+135939), which they reproduce within $\sim$$1\sigma$ for the $1/2^+$ and $5/2^+$
+states. The effective spectroscopic factors for the unbound resonances are
+shape-only (the weakly-bound approximation gives the correct angular shape but
+an artificial magnitude) and a continuum treatment is required for
+publication-grade values.
 \end{abstract}
 
 \tableofcontents
@@ -557,8 +561,11 @@ Fig.~\ref{fig:dsdoenv}.
 \end{figure}
 
 % ======================================================================
-\section{Comparison with the previous analysis}
+\section{Comparison with previous analyses}
 \label{sec:compare}
+
+\subsection{The earlier in-house \Cs\dp\ analysis}
+\label{sec:compare-movilla}
 
 The present extraction supersedes, and is benchmarked against, the earlier
 \Cs\dp\ analysis of Movilla and Ayyad~\cite{MovillaAyyad2026}, whose reference
@@ -586,6 +593,83 @@ controlled systematics envelope, and the documentation of the $0.45$~MeV excess.
   \caption{Example previous-analysis per-bin fit ($10$--$15^\circ$, $5^\circ$
   binning). Reference only.}
   \label{fig:prevbin}
+\end{figure}
+
+\subsection{Comparison with Pereira-Lopez \textit{et al.} (PLB 811, 135939)}
+\label{sec:compare-plb}
+
+The \emph{bound} states of \Cse\ provide a direct benchmark against the
+published transfer measurement of Pereira-Lopez \textit{et al.}, Phys.\ Lett.\
+B \textbf{811}, 135939 (2020)~\cite{PereiraLopez2020}, performed at
+$17.2$\mevu\ with a finite-range Johnson--Tandy ADWA analysis. This comparison
+is carried out in a dedicated companion analysis (repository
+\texttt{16Cdp17C\_PLB\_comparison}); the unbound resonances that are the focus
+of the present report are not addressed there. We summarize it here for
+completeness.
+
+The published angular distributions for the three bound states
+(g.s.\ $3/2^+$, $0.217$~MeV $1/2^+$, $0.335$~MeV $5/2^+$) were digitized and
+brought onto a common $\theta_{\rm c.m.}$ axis with the present data
+(Fig.~\ref{fig:plboverlay}). FRESCO single-particle shapes were then scaled by
+the published spectroscopic factors and compared to the efficiency-corrected
+data, both state-by-state (Fig.~\ref{fig:plbpanels}) and as a coherent sum with
+the paper's $C^2S$ applied to our DWBA (Fig.~\ref{fig:plbsfs}). The resulting
+spectroscopic factors are compared in Table~\ref{tab:plbsf}.
+
+\begin{table}[h]
+  \centering
+  \caption{Bound-state spectroscopic factors: Pereira-Lopez \textit{et al.}
+  (PLB 811, 135939) versus this work (companion bound-state analysis).}
+  \label{tab:plbsf}
+  \begin{tabular}{lccc}
+    \toprule
+    state & $\ell$ & $C^2S$ (PLB) & $C^2S$ (this work) \\
+    \midrule
+    g.s.\ $3/2^+$   & 2 & $0.03^{+0.05}_{-0.03}$ & $\rightarrow 0$ \\
+    $0.217$ $1/2^+$ & 0 & $0.64\pm0.18$          & $\mathbf{0.54\pm0.10}$ \\
+    $0.335$ $5/2^+$ & 2 & $0.62\pm0.13$          & $0.47$--$0.74$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The $1/2^+$ and $5/2^+$ spectroscopic factors are reproduced within
+$\sim$$1\sigma$ using a zero-range Johnson--Soper ADWA on the cleanest
+excitation-energy slice. One caveat is documented: at the paper's beam energy
+the zero-range calculation misses the deep $\ell=0$ diffraction minimum near
+$\theta\simeq17^\circ$, biasing the $1/2^+$ absolute normalization there;
+reproducing this requires the finite-range Johnson--Tandy ADWA used in the
+published work, which is the natural next step. The bound-state benchmark
+nonetheless confirms that the present absolute-normalization and
+efficiency-correction chain is consistent with an independent, published
+measurement.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.8\linewidth]{plb_overlay.png}
+  \caption{Bound-state d$\sigma$/d$\Omega$: this experiment (black, $11.77$\mevu)
+  and the digitized Pereira-Lopez \textit{et al.}\ PLB Fig.~2(a) data (red
+  squares, $17.2$\mevu, $\theta_{\rm lab}\!\to\!\theta_{\rm c.m.}$) on a common
+  axis, with the paper-$SF$ DWBA ($+$ background) curve.}
+  \label{fig:plboverlay}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{plb_cm_panels.png}
+  \caption{Per-state comparison of the bound-state angular distributions against
+  FRESCO with the published spectroscopic factors: (a) bound-states sum,
+  (b) $0.217$~MeV $1/2^+$ (paper $SF=0.64$), (c) $0.335$~MeV $5/2^+$ (paper
+  $SF=0.62$).}
+  \label{fig:plbpanels}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.72\linewidth]{plb_sfs_overlay.png}
+  \caption{Published spectroscopic factors (PLB 811, 135939) applied to our DWBA
+  for the three bound states and summed, compared to the efficiency-corrected
+  data.}
+  \label{fig:plbsfs}
 \end{figure}
 
 % ======================================================================
