@@ -468,24 +468,27 @@ def build():
         # ---- 20. comparison vs PLB 811 (Pereira-Lopez) --------------
         fig = slide("Comparison with Pereira-Lopez et al. (PLB 811, 135939)",
                     "bound states")
+        # plb_overlay is a tall 3-panel (bound sum / 1/2+ / 5/2+) in the CM frame
         add_image(fig, os.path.join(PLOTS, "plb_overlay.png"),
-                  (0.02, 0.10, 0.60, 0.74))
-        fig.text(0.65, 0.83, "Bound-state C²S: PLB vs this work",
+                  (0.02, 0.07, 0.42, 0.77))
+        fig.text(0.48, 0.83, "Bound-state C²S: PLB vs this work",
                  fontsize=13, fontweight="bold", color=MAROON)
-        mono(fig, 0.65, 0.76, [
+        mono(fig, 0.48, 0.76, [
             "state        l   PLB        this work",
             "----------------------------------------",
             "gs 3/2+      2   0.03       -> 0",
             "0.217 1/2+   0   0.64(18)   0.54(10)",
             "0.335 5/2+   2   0.62(13)   0.47-0.74",
         ], fs=11, dy=0.05)
-        bullets(fig, 0.65, 0.46, [
-            r"Bound states benchmark our absolute scale vs the published "
-            r"measurement (17.2 MeV/u, finite-range Johnson-Tandy ADWA).",
-            r"1/2$^+$ and 5/2$^+$ reproduced within ~1$\sigma$ (zero-range "
-            r"Johnson-Soper ADWA, cleanest $E_x$ slice).",
+        bullets(fig, 0.48, 0.50, [
+            r"CM-frame angular distributions (both datasets, both FRESCO "
+            r"energies, no extra normalization).",
+            r"Our absolute scale is validated vs the $^{16}$C(d,d) elastic "
+            r"channel (same beam$\times$target luminosity).",
+            r"1/2$^+$ and 5/2$^+$ $C^2S$ reproduced within ~1$\sigma$; g.s. "
+            r"3/2$^+$ consistent with the small published value.",
             r"Companion analysis: repo 16Cdp17C_PLB_comparison.",
-        ], fs=11.5, dy=0.08)
+        ], fs=11, dy=0.072)
         page(pdf, fig)
 
         # ---- 21. PLB per-state panels -------------------------------

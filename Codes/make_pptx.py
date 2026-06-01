@@ -434,6 +434,45 @@ def build():
         "clustering, slanted Eₓ(θ) ridge vs vertical band.",
     ], size=12)
 
+    # ---- 20. comparison vs PLB 811 (Pereira-Lopez) -------------------
+    s = blank(prs)
+    header(s, "Comparison with Pereira-Lopez et al. (PLB 811, 135939)",
+           "bound states")
+    pic(s, os.path.join(PLOTS, "plb_overlay.png"), 0.3, 1.05, 4.6, 5.9)
+    text(s, 5.5, 1.15, 7.4, 0.4, ["Bound-state C²S: PLB vs this work"],
+         size=14, bold=True, color=MAROON)
+    text(s, 5.5, 1.75, 7.4, 2.2, [
+        "state        l   PLB        this work",
+        "----------------------------------------",
+        "gs 3/2+      2   0.03       -> 0",
+        "0.217 1/2+   0   0.64(18)   0.54(10)",
+        "0.335 5/2+   2   0.62(13)   0.47-0.74",
+    ], size=12.5, mono=True, after=2)
+    text(s, 5.5, 4.0, 7.4, 3.0, [
+        "CM-frame angular distributions (both datasets, both FRESCO energies, "
+        "no extra normalization).",
+        "Our absolute scale is validated vs the ¹⁶C(d,d) elastic channel (same "
+        "beam×target luminosity).",
+        "1/2⁺ and 5/2⁺ C²S reproduced within ~1σ; g.s. 3/2⁺ consistent with the "
+        "small published value.",
+        "Companion analysis: repo 16Cdp17C_PLB_comparison.",
+    ], size=12)
+
+    # ---- 21. PLB per-state panels -----------------------------------
+    s = blank(prs)
+    header(s, "PLB 811 comparison: per-state bound-state fits",
+           "bound states")
+    pic(s, os.path.join(PLOTS, "plb_cm_panels.png"), 0.2, 1.15, 8.0, 5.5)
+    pic(s, os.path.join(PLOTS, "plb_sfs_overlay.png"), 8.45, 1.5, 4.7, 4.2)
+    text(s, 0.2, 6.75, 8.2, 0.5, [
+        "Per-state dσ/dΩ vs FRESCO with the published spectroscopic factors  "
+        "(a: bound-states sum,  b: 0.217 1/2⁺ SF=0.64,  c: 0.335 5/2⁺ SF=0.62).",
+    ], size=10.5, color=GREY)
+    text(s, 8.45, 5.85, 4.7, 0.8, [
+        "Right: paper SFs applied to our DWBA, summed vs efficiency-corrected "
+        "data.",
+    ], size=10.5, color=GREY)
+
     prs.save(OUT)
     print("wrote", OUT, "(", len(prs.slides), "slides )")
 
