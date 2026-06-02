@@ -206,22 +206,22 @@ plots/                  PNG output of all analysis steps
   events and were not used for the PDF presentation).
 - **35–40° bins**: bound-state Gaussian amplitudes hit the fit floor at the
   AT-TPC kinematic edge — drop these bins when comparing bound-state ADs.
-- **2.980 3/2+**: no L template fits the data well (best χ²/ν = 1.87 at
-  L=3, but expected L=2 only marginally worse at 2.11); the 17.5° peak in
+- **2.980 3/2+**: no L template fits the data well (best χ²/ν = 2.73 at
+  L=3, but expected L=2 only marginally worse at 3.05); the 17.5° peak in
   the AD is not reproduced. Likely background contamination under the BW
   or a centroid/width misassignment — the spectral fit also wants E₀
   ~120 keV above the shell-model value (see [[feedback-shellmodel-priors]]).
-- **3.661 NEW**: L=2 narrowly preferred over L=3 (1.07 vs 1.12) with the
+- **3.661 NEW**: L=2 narrowly preferred over L=3 (1.38 vs 1.45) with the
   new baseline — flipped from pre-efficiency-fix where L=3 led. Neither
   decisive at current statistics.
 - **4.841 1/2+**: L=0 is still the decisive pick (next L worse by factor
-  ≥2 in χ²/ν), but the absolute χ²/ν climbed from 0.30 to 2.38 after the
+  ≥2 in χ²/ν), but the absolute χ²/ν climbed from 0.30 to 3.09 after the
   efficiency correction — worth a residual check in the AD, since the
   spectral fit also resolves a Γ ~3× the shell-model value here.
 - **5.91 3/2+ / 6.30 5/2+**: kinematic-edge bins drop most of the signal
   past 30°, so the AD is fit on only ~8 effective points. 6.30 picks
   L=0 by χ²/ν but that is forbidden by 0⁺⊗s1/2 = 1/2⁺; the L=2 d-wave
-  fit (χ²/ν = 0.36) is essentially tied and physically allowed.
+  fit (χ²/ν = 0.41) is essentially tied and physically allowed.
 - **Absolute SFs**: not extracted here. The shape-only weakly-bound
   approximation is sufficient for L assignment, not for spectroscopic-factor
   publication.
