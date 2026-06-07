@@ -18,7 +18,7 @@
 % shorthands
 \newcommand{\Cs}{$^{16}$C}
 \newcommand{\Cse}{$^{17}$C}
-\newcommand{\dp}{(d,p)}
+\newcommand{\dpr}{(d,p)}
 \newcommand{\dsdo}{$\mathrm{d}\sigma/\mathrm{d}\Omega$}
 \newcommand{\chinu}{$\chi^2/\nu$}
 \newcommand{\thcm}{$\theta_{\mathrm{c.m.}}$}
@@ -26,7 +26,7 @@
 \newcommand{\good}{\textcolor{green!55!black}{\textbf{\checkmark}}}
 \newcommand{\warn}{\textcolor{orange!80!black}{\textbf{!}}}
 
-\title[\Cs\dp\Cse\ analysis]{Spectroscopy of unbound \Cse\ states\\ via \Cs\dp\Cse\ at FRIB (a1975)}
+\title[\Cs\dpr\Cse\ analysis]{Spectroscopy of unbound \Cse\ states\\ via \Cs\dpr\Cse\ at FRIB (a1975)}
 \subtitle{Angular distributions, absolute normalization, and $L$ assignments}
 \author[Y.~Ayyad]{Y.~Ayyad}
 \institute[USC]{IGFAE -- Universidade de Santiago de Compostela}
@@ -177,6 +177,37 @@
       Numerov $+$ Coulomb-function matching; verified vs Rutherford in the
       point-charge limit ($10^{-3}$). $E_{\mathrm{lab}}(d)=23.55$ MeV,
       $E_{\mathrm{c.m.}}=20.92$ MeV.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Absolute normalization: vertex-$z$ slicing}
+  \begin{itemize}
+    \item $N_{\mathrm{target}}=0.019632$ = \textbf{full-detector} D$_2$ areal
+      density ($z\!\in\![0,0.99]$ m) $\approx$ per-metre. Yields from a slice
+      $[z_{\rm lo},z_{\rm hi}]$ carry $1/\Delta z$, $\Delta z=z_{\rm hi}-z_{\rm lo}$ (m):
+      $\dfrac{\mathrm{d}\sigma}{\mathrm{d}\Omega} = \dfrac{Y}{N_{\mathrm{beam}} N_{\mathrm{target}} \Delta\Omega}\cdot 10\,/\,\Delta z$.
+    \item The divisor is the \textbf{slice thickness in m}, \emph{not} an $E_x$
+      bin width:
+  \end{itemize}
+  \vspace{-0.3em}
+  \begin{center}\small
+  \begin{tabular}{ccc}
+    \toprule
+    vertex-$z$ slice (m) & $\Delta z$ (m) & divisor \\
+    \midrule
+    $[0.1,0.5]$ & 0.4 & $/0.4$ \\
+    $[0.8,1.0]$ & 0.2 & $/0.2$ \\
+    $\mathbf{[0.9,1.0]}$ (bound states) & \textbf{0.1} & $\mathbf{/0.1}$ \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \begin{itemize}
+    \item Unbound analysis uses the \emph{full} range (full peak areas)
+      $\Rightarrow$ no $\Delta z$ factor.
+    \item \good\ \textbf{Elastic consistency:} $(d,d)$ is full-range; the
+      first-principles OM match (data/OM $\approx0.86$--$0.98$) fixes
+      $N_{\mathrm{beam}}N_{\mathrm{target}}$ at full thickness, and $/\Delta z$
+      puts the slice on that scale to $\sim$1\% ($0.99/0.1=9.9$ vs $10$).
   \end{itemize}
 \end{frame}
 
@@ -341,7 +372,7 @@
 \begin{frame}{Summary}
   \begin{itemize}
     \item Per-state absolute \dsdo\ extracted for the 3 bound and 7 unbound
-      \Cse\ states from \Cs\dp\ at 11.77 MeV/u.
+      \Cse\ states from \Cs\dpr\ at 11.77 MeV/u.
     \item \good\ \textbf{Absolute scale validated} against \Cs(d,d) elastic; the
       normalization uncertainty is the $\sim$12\% OMP spread (global).
     \item \good\ \textbf{Error model corrected}: per-point statistics no longer

@@ -10,7 +10,6 @@
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
-\usepackage{siunitx}
 \usepackage[margin=2.4cm]{geometry}
 \usepackage{xcolor}
 \usepackage{caption}
@@ -23,7 +22,7 @@
 
 \newcommand{\Cs}{$^{16}$C}
 \newcommand{\Cse}{$^{17}$C}
-\newcommand{\dp}{(d,p)}
+\newcommand{\dpr}{(d,p)}
 \newcommand{\dsdo}{$\mathrm{d}\sigma/\mathrm{d}\Omega$}
 \newcommand{\chinu}{$\chi^2/\nu$}
 \newcommand{\thcm}{$\theta_{\mathrm{c.m.}}$}
@@ -33,7 +32,7 @@
 % editorial flag
 \newcommand{\note}[1]{\textcolor{red!70!black}{[#1]}}
 
-\title{\textbf{Spectroscopy of unbound \Cse\ states via the \Cs\dp\Cse\
+\title{\textbf{Spectroscopy of unbound \Cse\ states via the \Cs\dpr\Cse\
 reaction at FRIB (experiment a1975)}\\[2pt]
 \large Angular distributions, absolute normalization, and $L$ assignments}
 \author{Y.~Ayyad\\
@@ -47,7 +46,7 @@ reaction at FRIB (experiment a1975)}\\[2pt]
 \noindent
 We report the extraction of absolute differential cross sections
 ($\mathrm{d}\sigma/\mathrm{d}\Omega$) for states of \Cse\ populated in the
-\Cs\dp\Cse\ transfer reaction at $11.77$\mevu, measured with the AT-TPC at
+\Cs\dpr\Cse\ transfer reaction at $11.77$\mevu, measured with the AT-TPC at
 FRIB (experiment a1975). Three bound states and seven unbound resonances are
 isolated through an angle-binned spectral fit of the $Q$-corrected excitation
 energy. The absolute scale is fixed by a self-contained optical-model analysis
@@ -57,7 +56,7 @@ across optical potentials), carried as a correlated global scale. Orbital
 angular momenta are assigned by comparing each angular distribution to FRESCO
 ADWA single-particle shapes. A localized excess near $E_x\simeq0.45$~MeV, which
 concentrates at backward angles, is documented and carried as a model-dependence
-systematic. Results are compared to the previous in-house \Cs\dp\ analysis of
+systematic. Results are compared to the previous in-house \Cs\dpr\ analysis of
 Movilla and Ayyad, and the bound-state spectroscopic factors are benchmarked
 against the published measurement of Pereira-Lopez \textit{et al.} (PLB 811,
 135939), which they reproduce within $\sim$$1\sigma$ for the $1/2^+$ and $5/2^+$
@@ -76,7 +75,7 @@ publication-grade values.
 The neutron-rich carbon isotope \Cse\ sits near the $N=14$ subshell and its
 single-particle structure probes the evolution of the $sd$ shell far from
 stability. Bound-state spectroscopy and the lowest unbound resonances have been
-studied previously in \Cs\dp\ transfer~\cite{PereiraLopez2020,MovillaAyyad2026};
+studied previously in \Cs\dpr\ transfer~\cite{PereiraLopez2020,MovillaAyyad2026};
 the present work extends that program to the full set of seven unbound
 resonances accessible in experiment a1975, with an emphasis on (i) placing the
 angular distributions on an \emph{absolute} cross-section scale, (ii) a
@@ -96,7 +95,7 @@ sufficient to reproduce the numbers. Editorial placeholders are marked in
 A \Cs\ beam at a total energy of $188.33$~MeV ($11.77$\mevu;
 $Q_{\mathrm{g.s.}}=-1.498$~MeV) impinged on the deuterated active gas of the
 AT-TPC~\cite{Bradt2017}, which served simultaneously as the D$_2$ target and the
-tracking detector. Recoil protons from \Cs\dp\Cse\ were reconstructed
+tracking detector. Recoil protons from \Cs\dpr\Cse\ were reconstructed
 event-by-event; the magnetic rigidity, polar and azimuthal angles, and the
 reaction vertex are provided by the ATTPCROOT \texttt{InterpSolver} reduction
 (tree \texttt{parquettree}). The proton energy is obtained from the rigidity,
@@ -266,6 +265,41 @@ factor 10 converting fm$^2\!\to$mb, and $\varepsilon$ the detection efficiency
 ground-state $10$--$12.5^\circ$ point reproduces from the yields table
 ($Y=11.55\Rightarrow\mathrm{d}\sigma/\mathrm{d}\Omega=0.829$~mb/sr).
 
+\subsection{Vertex-$z$ slicing and the target-thickness factor}
+\label{sec:znorm}
+$N_{\rm target}=0.019632$ is the \emph{full-detector} deuteron areal density:
+D$_2$ at $300$~Torr ($n_{\rm D}\approx1.98\times10^{19}$~cm$^{-3}$) integrated
+over the full active length $z\in[0,0.99]$~m, i.e.\ a per-metre areal density
+since the detector is $\approx1$~m long. When the yields are taken from a
+restricted vertex-$z$ slice $[z_{\rm lo},z_{\rm hi}]$ rather than the full
+length, only that fraction of target contributes, so the cross section carries
+an explicit factor $1/\Delta z$ with $\Delta z=z_{\rm hi}-z_{\rm lo}$ in metres,
+\begin{equation}
+  \frac{\mathrm{d}\sigma}{\mathrm{d}\Omega}
+  = \frac{Y}{N_{\rm beam}\,N_{\rm target}\,\Delta\Omega}\cdot 10
+    \ \Big/\ \Delta z .
+  \label{eq:znorm}
+\end{equation}
+The earlier in-house bound-state extraction proceeds slice-by-slice, so the
+divisor is the \emph{slice thickness in metres}---not an excitation-energy bin
+width:
+\begin{center}
+  \begin{tabular}{ccc}
+    \toprule
+    vertex-$z$ slice (m) & $\Delta z$ (m) & divisor \\
+    \midrule
+    $[0.1,0.5]$ & 0.4 & $/0.4$ \\
+    $[0.5,0.8]$ & 0.3 & $/0.3$ \\
+    $[0.8,1.0]$ & 0.2 & $/0.2$ \\
+    $[0.9,1.0]$ & 0.1 & $/0.1$ \\
+    \bottomrule
+  \end{tabular}
+\end{center}
+The bound states are extracted from the $[0.9,1.0]$~m slice ($/0.1$). The
+present unbound analysis instead integrates the \emph{full} vertex-$z$ range
+with the full $N_{\rm target}$ and uses full fitted peak areas, so $\Delta z=1$
+and no slice factor enters.
+
 \subsection{Validation against \Cs$(d,d)$ elastic}
 The elastic channel shares the entrance partition---same beam, D$_2$ target,
 and luminosity---so an absolute optical-model (OM) elastic cross section that
@@ -305,12 +339,38 @@ Table~\ref{tab:omp} and Fig.~\ref{fig:elastic}.
 
 The free-fit potential reproduces the absolute scale to $\sim$2\,\%
 ($0.978\pm0.043$); however, the ADWA potential actually used in the transfer
-DWBA sits $\sim$14\,\% below the data. The honest normalization uncertainty is
-therefore the \emph{cross-potential spread}, $\approx0.86$--$0.98$
+DWBA sits $\sim$14\,\% below the data. We stress that the large reduced
+$\chi^2$ in Table~\ref{tab:omp} ($\chi^2/\nu=32$--$398$) reflect a mismatch in
+the \emph{angular shape}---none of the potentials reproduces the full
+Coulomb--nuclear diffraction pattern out to large angles---and not a failure of
+the absolute scale: the quantity used here is the error-weighted
+forward-lobe ratio $\langle\mathrm{data}/\mathrm{OM}\rangle$, which is robust
+against the shape mismatch because the forward lobe is Coulomb-dominated and
+common to all three potentials. The honest normalization uncertainty is
+therefore the \emph{cross-potential spread} of that ratio, $\approx0.86$--$0.98$
 ($\sim$12\,\%). This is a global, fully correlated scale that shifts all states
 and angles together; it is \emph{not} folded into the per-point error but
 quoted separately and provided as outer bands in
 \texttt{results/\{dsdo,yield\}\_bands\_fine.csv}.
+
+\paragraph{Consistency of the sliced data with the full-range elastic.}
+The elastic distribution is built from the \emph{full} vertex-$z$ range, so the
+OM match above certifies $N_{\rm beam}\,N_{\rm target}$ \emph{at the full
+thickness} from first principles---the OM cross section is absolute, with no
+free normalization, so a wrong target thickness would shift the absolute scale
+by that factor and drive $\langle$data/OM$\rangle$ far from unity rather than to
+$\approx0.9$. The sliced bound-state data inherit this same scale through
+Eq.~\eqref{eq:znorm}: the $1/\Delta z$ factor rescales the full-detector
+$N_{\rm target}$ to the slice, and for the $[0.9,1.0]$~m slice the rigorous
+factor $\Delta z_{\rm full}/\Delta z_{\rm slice}=0.99/0.10=9.9$ differs from the
+applied $1/0.1=10$ by only $1\%$. The transfer and elastic channels therefore
+sit on one absolute scale to $\sim$1\,\%, well within the $\sim$12\,\%
+optical-potential band. (The counts$\to$mb/sr conversion is the same
+$N_{\rm beam}N_{\rm target}$ recipe as the transfer, defined in
+\texttt{C16\_pd\_AngBins.C}; the solver \texttt{om\_elastic.py} and the elastic
+data values \texttt{results/om\_elastic\_dd.csv} are version-controlled, so the
+check is fully reproducible. Only the raw count-extract \texttt{16C\_dd\_gs.txt}
+is uncommitted, and it is recoverable from those.)
 
 \subsection{Efficiency correction}
 \label{sec:eff}
@@ -564,11 +624,11 @@ Fig.~\ref{fig:dsdoenv}.
 \section{Comparison with previous analyses}
 \label{sec:compare}
 
-\subsection{The earlier in-house \Cs\dp\ analysis}
+\subsection{The earlier in-house \Cs\dpr\ analysis}
 \label{sec:compare-movilla}
 
 The present extraction supersedes, and is benchmarked against, the earlier
-\Cs\dp\ analysis of Movilla and Ayyad~\cite{MovillaAyyad2026}, whose reference
+\Cs\dpr\ analysis of Movilla and Ayyad~\cite{MovillaAyyad2026}, whose reference
 fits are reproduced in Figs.~\ref{fig:previnc} and~\ref{fig:prevbin} (copied
 verbatim from the parent repository; not regenerated here). The earlier work
 used $5^\circ$ angular bins; the present analysis uses $2.5^\circ$ bins, the
@@ -685,7 +745,7 @@ measurement.
 
 \paragraph{Summary.}
 Per-state absolute differential cross sections were extracted for three bound
-and seven unbound \Cse\ states from \Cs\dp\ at $11.77$\mevu. The absolute scale
+and seven unbound \Cse\ states from \Cs\dpr\ at $11.77$\mevu. The absolute scale
 is validated against the \Cs$(d,d)$ elastic channel, with a $\sim$12\,\% global
 normalization uncertainty (the optical-potential spread). The per-point error
 model was corrected (no double-counting), and statistical, systematic, and scale
